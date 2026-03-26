@@ -1,7 +1,7 @@
 {
   "name": "jassie-ai",
   "version": "1.0.0",
-  "description": "Official TypeScript SDK for the Jassie AI API",
+  "description": "Official TypeScript SDK for the Jassie AI API — works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, and every JS/TS framework",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/esm/index.d.ts",

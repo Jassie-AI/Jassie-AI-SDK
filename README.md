@@ -1,7 +1,8 @@
 # Jassie AI SDK
 
-Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API. Works with Node.js, browsers, and React Native.
+Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API. Works across the entire JavaScript/TypeScript ecosystem — Node.js, React, Next.js, Vue, Angular, Svelte, Vite, React Native, Expo, Electron, and any framework that runs JS/TS.
 
+- Works with every JS/TS framework and runtime out of the box
 - Full TypeScript support with strict types
 - Streaming via Server-Sent Events (SSE)
 - Automatic retries with exponential backoff
@@ -451,10 +452,22 @@ It does **not** retry on 4xx client errors (except 429). Retries use exponential
 
 ## Platform Support
 
+This SDK is compatible with the **entire JavaScript/TypeScript ecosystem**. If your framework runs JS or TS, this package works out of the box.
+
+| Category | Frameworks / Runtimes |
+|---|---|
+| **Runtimes** | Node.js (>= 16), Deno, Bun |
+| **Web Frameworks** | React, Next.js, Vue, Nuxt, Angular, Svelte, SvelteKit, Remix, Astro, Solid |
+| **Bundlers** | Vite, webpack, Rollup, esbuild, Turbopack, Parcel |
+| **Mobile** | React Native, Expo |
+| **Desktop** | Electron |
+| **TypeScript** | All `moduleResolution` modes (`node`, `node16`, `nodenext`, `bundler`) |
+
+### Transport Layer
+
 | Platform | Transport | Auto-detected |
 |---|---|---|
-| Node.js >= 16 | Fetch API | Yes |
-| Browsers | Fetch API | Yes |
+| Node.js / Browsers | Fetch API | Yes |
 | React Native | XMLHttpRequest | Yes |
 
 The platform is auto-detected, but you can override it:
