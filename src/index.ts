@@ -1,3 +1,5 @@
+import { JassieAI } from './client.js';
+
 export { JassieAI } from './client.js';
 export default JassieAI;
 
@@ -39,6 +41,3 @@ export {
 
 // Streaming
 export { JassieStream } from './streaming/stream.js';
-
-// Re-export the client class for named import
-import { JassieAI } from './client.js';
