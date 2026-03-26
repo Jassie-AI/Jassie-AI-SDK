@@ -1,0 +1,37 @@
+{
+  "name": "jassie-ai",
+  "version": "1.0.0",
+  "description": "Official TypeScript SDK for the Jassie AI API",
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "types": "./lib/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js",
+      "types": "./lib/esm/index.d.ts"
+    }
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "jassie",
+    "ai",
+    "sdk",
+    "llm",
+    "streaming",
+    "react-native"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
