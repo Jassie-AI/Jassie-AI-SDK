@@ -187,6 +187,7 @@ const response = await client.text.create({
 | `role` | `'system' \| 'user' \| 'assistant'` | Yes | Who is speaking |
 | `content` | `string` | Yes | The message text |
 | `image` | `string \| string[]` | No | Image URL(s) for vision |
+| `video` | `string \| string[]` | No | Video URL(s) for vision |
 
 ### Text Response
 
@@ -194,7 +195,10 @@ const response = await client.text.create({
 |---|---|---|
 | `type` | `string` | Response type |
 | `content` | `string` | The generated text |
-| `done` | `boolean` | Whether generation is complete |
+| `request_id` | `string` | Unique request identifier |
+| `chunks` | `number` | Total number of chunks |
+| `duration_seconds` | `number` | Time taken to generate the response |
+| `index` | `number` | Response index |
 | `usage` | `Usage` | Token usage stats (`prompt_tokens`, `completion_tokens`, `total_tokens`) |
 
 ---
@@ -324,10 +328,10 @@ const response = await client.images.generate({
 | `reference` | `string` | No | — | URL of a reference image for style/content guidance |
 | `first_image` | `string` | No | — | URL of the starting image for interpolation |
 | `last_image` | `string` | No | — | URL of the ending image for interpolation |
-| `width` | `number` | No | — | Image width in pixels |
-| `height` | `number` | No | — | Image height in pixels |
-| `guidance_scale` | `number` | No | — | How closely to follow the prompt (higher = more literal) |
-| `num_inference_steps` | `number` | No | — | Number of denoising steps (higher = more detail, slower) |
+| `width` | `number` | No | — | Image width in pixels (must be divisible by 8) |
+| `height` | `number` | No | — | Image height in pixels (must be divisible by 8) |
+| `guidance_scale` | `number` | No | `7.5` | How closely to follow the prompt (higher = more literal) |
+| `num_inference_steps` | `number` | No | `50` | Number of denoising steps (higher = more detail, slower) |
 | `negative_prompt` | `string` | No | — | What to avoid in the generated image |
 | `seed` | `number` | No | — | Seed for reproducible results |
 
@@ -426,15 +430,11 @@ console.log(result.videoUrl);
 |---|---|---|---|---|
 | `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema-4k'` | Yes | — | Model to use |
 | `prompt` | `string` | Yes | — | Text description of the video to generate |
-| `duration` | `number` | Yes | — | Video duration in seconds |
-| `reference` | `string` | No | — | Reference image or video URL |
-| `firstFrame` | `string` | No | — | Image URL for the first frame |
-| `lastFrame` | `string` | No | — | Image URL for the last frame |
-| `aspectRatio` | `string` | No | — | Aspect ratio (e.g. `'16:9'`, `'9:16'`, `'1:1'`) |
-| `watermark` | `boolean` | No | — | Add a watermark to the video |
+| `duration` | `number` | Yes | — | Video duration in seconds (`5` or `10`) |
+| `image` | `string` | No | — | Reference image URL to guide video generation |
+| `seed` | `number` | No | — | Seed for reproducible results |
 | `camera_motion` | `string` | No | — | Camera movement (e.g. `'pan_left'`, `'zoom_in'`) |
 | `negative_prompt` | `string` | No | — | What to avoid in the generated video |
-| `seed` | `number` | No | — | Seed for reproducible results |
 
 ### Poll Options
 
@@ -532,7 +532,7 @@ console.log(result.musicUrl);
 | `model` | `'jassie-beat'` | Yes | — | Model to use |
 | `tags` | `string` | Yes | — | Comma-separated genre/style tags (e.g. `'lo-fi, chill, piano'`) |
 | `lyrics` | `string` | Yes | — | Song lyrics (use `\n` for line breaks) |
-| `duration` | `number` | No | — | Track duration in seconds |
+| `duration` | `number` | Yes | — | Track duration in seconds (5–240) |
 | `seed` | `number` | No | — | Seed for reproducible results |
 
 > **Note:** Poll options are the same as [Video Poll Options](#poll-options).

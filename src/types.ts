@@ -16,6 +16,7 @@ export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
   image?: string | string[];
+  video?: string | string[];
 }
 
 // ── Models ───────────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ export interface Usage {
 // ── Streaming Chunk ──────────────────────────────────────────────────────────
 
 export interface JassieChunk {
-  type: 'queued' | 'text' | 'thinking' | 'error';
+  type: 'queued' | 'text' | 'error';
   content: string;
   done: boolean;
   index?: number;
@@ -56,7 +57,6 @@ export interface TextGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  think?: boolean;
   web?: 'auto' | 'always';
 }
 
@@ -66,7 +66,6 @@ export interface TextStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  think?: boolean;
   web?: 'auto' | 'always';
 }
 
@@ -106,11 +105,7 @@ export interface VideoGenerateParams {
   model: VideoModel;
   prompt: string;
   duration: number;
-  reference?: string;
-  firstFrame?: string;
-  lastFrame?: string;
-  watermark?: boolean;
-  aspectRatio?: string;
+  image?: string;
   seed?: number;
   camera_motion?: string;
   negative_prompt?: string;
@@ -121,7 +116,7 @@ export interface MusicGenerateParams {
   tags: string;
   lyrics?: string;
   seed?: number;
-  duration?: number;
+  duration: number;
 }
 
 // ── Response Types ───────────────────────────────────────────────────────────
@@ -129,7 +124,9 @@ export interface MusicGenerateParams {
 export interface TextResponse {
   type: string;
   content: string;
-  done: boolean;
+  request_id?: string;
+  chunks?: number;
+  duration_seconds?: number;
   index?: number;
   usage?: Usage;
 }
