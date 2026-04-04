@@ -27,6 +27,7 @@
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:pkg-markers": "echo '{\"type\":\"module\"}' > lib/esm/package.json && echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json",
+    "test": "node --env-file=.env test-sdk.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },

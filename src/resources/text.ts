@@ -18,31 +18,21 @@ export class Text {
     this.client = client;
   }
 
-  /** Non-streaming text generation */
-  async generate(params: TextGenerateParams): Promise<TextResponse> {
-    return this.client._request<TextResponse>('POST', '/v1/generate-text', {
-      ...params,
-      stream: false,
-    });
-  }
-
-  /** Streaming text generation */
-  stream(params: TextStreamParams | Omit<TextStreamParams, 'stream'>): JassieStream {
-    return this.client._stream('POST', '/v1/generate-text', {
-      ...params,
-      stream: true,
-    });
-  }
-
-  /** Overloaded create: returns stream if stream=true, otherwise Promise */
+  /** Create a text generation. Set stream: true for real-time streaming. */
   create(params: TextStreamParams): JassieStream;
   create(params: TextGenerateParams): Promise<TextResponse>;
   create(
     params: TextGenerateParams | TextStreamParams,
   ): JassieStream | Promise<TextResponse> {
     if (params.stream === true) {
-      return this.stream(params);
+      return this.client._stream('POST', '/v1/generate-text', {
+        ...params,
+        stream: true,
+      });
     }
-    return this.generate({ ...params, stream: false } as TextGenerateParams);
+    return this.client._request<TextResponse>('POST', '/v1/generate-text', {
+      ...params,
+      stream: false,
+    });
   }
 }
