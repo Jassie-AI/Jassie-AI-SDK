@@ -363,8 +363,8 @@ Generate images from text prompts.
 
 | Model | Type | Description |
 |---|---|---|
-| `jassie-pixel` | Multi-Modal → Image | Photorealistic 2K image generation powered by Seedream 4.5. Supports reference images, first/last frame conditioning, and fine-grained style control. |
-| `jassie-pixel-x` | Multi-Modal → Image | 4K ultra-high-resolution image generation powered by Seedream 4.5. Same powerful conditioning options as Pixel, at twice the resolution — print-ready and production-ready. |
+| `jassie-pixel` | Multi-Modal → Image | Photorealistic 2K image generation. Supports reference images, first/last frame conditioning, and fine-grained style control. |
+| `jassie-pixel-x` | Multi-Modal → Image | 4K ultra-high-resolution image generation. Same powerful conditioning options as Pixel, at twice the resolution — print-ready and production-ready. |
 
 ### Basic Generation
 
