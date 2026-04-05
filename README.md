@@ -1,6 +1,10 @@
 # Jassie AI SDK
 
-Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API.
+[![npm version](https://img.shields.io/npm/v/jassie-ai.svg)](https://www.npmjs.com/package/jassie-ai)
+[![npm downloads](https://img.shields.io/npm/dm/jassie-ai.svg)](https://www.npmjs.com/package/jassie-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API — built by [Airbin](https://airbin.app).
 
 Generate text, code, images, videos, and music — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
 
@@ -15,6 +19,7 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 
 - [Installation](#installation)
 - [Setup](#setup)
+- [Quick Reference](#quick-reference)
 - [Text Generation](#text-generation)
 - [Code Generation](#code-generation)
 - [Image Generation](#image-generation)
@@ -24,6 +29,9 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 - [Error Handling](#error-handling)
 - [Platform Support](#platform-support)
 - [TypeScript Types](#typescript-types)
+- [Rate Limits](#rate-limits)
+- [About](#about)
+- [License](#license)
 
 ---
 
@@ -53,6 +61,96 @@ import JassieAI from 'jassie-ai';
 const client = new JassieAI({ apiKey: 'your-api-key' });
 ```
 
+### Client Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `apiKey` | `string` | **Yes** | — | Your Jassie AI API key |
+| `baseURL` | `string` | No | `'https://api.jassie.ai'` | API base URL (for proxies or custom endpoints) |
+| `timeout` | `number` | No | `60000` | Request timeout in milliseconds |
+| `maxRetries` | `number` | No | `2` | Number of retry attempts for failed requests |
+| `platform` | `'node' \| 'web' \| 'react-native'` | No | Auto-detected | Force a specific platform adapter |
+
+```typescript
+// Full configuration example
+const client = new JassieAI({
+  apiKey: 'your-api-key',      // Required
+  timeout: 30000,              // Optional: 30 second timeout
+  maxRetries: 3,               // Optional: retry up to 3 times
+});
+```
+
+---
+
+## Quick Reference
+
+A quick overview of required and optional parameters for each generation type.
+
+> **Legend:** ✅ = Required | ⚪ = Optional
+
+### Text & Code Generation
+
+```typescript
+client.text.create({
+  model: 'jassie-pulse',        // ✅ Required: 'jassie-pulse' | 'jassie-bolt'
+  messages: [...],              // ✅ Required: Array of messages
+  stream: true,                 // ⚪ Optional: Enable streaming (default: false)
+  maxTokens: 2000,              // ⚪ Optional: Max tokens to generate
+  temperature: 0.7,             // ⚪ Optional: Randomness (0-2)
+  web: 'auto',                  // ⚪ Optional: Web search ('auto' | 'always')
+});
+
+client.code.create({
+  model: 'jassie-code',         // ✅ Required
+  messages: [...],              // ✅ Required
+  // Same optional params as text
+});
+```
+
+### Image Generation
+
+```typescript
+client.images.generate({
+  model: 'jassie-pixel',        // ✅ Required: 'jassie-pixel' | 'jassie-pixel-x'
+  prompt: 'A sunset...',        // ✅ Required: Image description
+  reference: 'https://...',     // ⚪ Optional: Reference image URL
+  first_image: 'https://...',   // ⚪ Optional: Start image for interpolation
+  last_image: 'https://...',    // ⚪ Optional: End image for interpolation
+  width: 1024,                  // ⚪ Optional: Width in pixels (divisible by 8)
+  height: 1024,                 // ⚪ Optional: Height in pixels (divisible by 8)
+  guidance_scale: 7.5,          // ⚪ Optional: Prompt adherence (default: 7.5)
+  num_inference_steps: 50,      // ⚪ Optional: Quality steps (default: 50)
+  negative_prompt: 'blurry',    // ⚪ Optional: What to avoid
+  seed: 42,                     // ⚪ Optional: Reproducibility seed
+});
+```
+
+### Video Generation
+
+```typescript
+client.video.generateAndWait({
+  model: 'jassie-vibe',         // ✅ Required: 'jassie-vibe' | 'jassie-motion'
+  prompt: 'Ocean waves...',     // ✅ Required: Video description
+  duration: 5,                  // ✅ Required: Duration in seconds (5 or 10)
+  image: 'https://...',         // ⚪ Optional: Reference image
+  seed: 42,                     // ⚪ Optional: Reproducibility seed
+  camera_motion: 'pan_left',    // ⚪ Optional: Camera movement
+  negative_prompt: 'blurry',    // ⚪ Optional: What to avoid
+});
+```
+
+### Music Generation
+
+```typescript
+client.music.generateAndWait({
+  model: 'jassie-beat',         // ✅ Required
+  tags: 'lo-fi, chill, piano',  // ✅ Required: Genre/style tags
+  duration: 30,                 // ✅ Required: Duration in seconds (5-240)
+  lyrics: 'Your lyrics...',     // ⚪ Optional: Song lyrics
+  seed: 42,                     // ⚪ Optional: Reproducibility seed
+});
+```
+
 ---
 
 ## Text Generation
@@ -63,8 +161,8 @@ Generate text responses using conversational messages.
 
 | Model | Type | Description |
 |---|---|---|
-| `jassie-pulse` | Text → Text | Lightning-fast text intelligence with million-token context. Excels at multi-turn conversations, structured JSON output, and multilingual support — at the lowest cost per token in the lineup. |
-| `jassie-bolt` | Multi-Modal → Text | Flagship multimodal model that processes text, images, and video together. Delivers breakthrough accuracy on reasoning, vision, and agentic tasks with function calling support. |
+| `jassie-pulse` | Text → Text | Lightning-fast text intelligence with million-token context. Excels at multi-turn conversations, structured JSON output, and multilingual support — at the lowest cost per token in the lineup. **Rate Limits:** 5M TPM, 600 RPM |
+| `jassie-bolt` | Multi-Modal → Text | Flagship multimodal model that processes text, images, and video together. Delivers breakthrough accuracy on reasoning, vision, and agentic tasks with function calling support. **Rate Limits:** 100K TPM, 60 RPM |
 
 ### Basic Usage
 
@@ -173,21 +271,21 @@ const response = await client.text.create({
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-pulse' \| 'jassie-bolt'` | Yes | — | Model to use |
-| `messages` | `Message[]` | Yes | — | Array of conversation messages |
+| `model` | `'jassie-pulse' \| 'jassie-bolt'` | **Yes** | — | Model to use |
+| `messages` | `Message[]` | **Yes** | — | Array of conversation messages |
 | `stream` | `boolean` | No | `false` | Set `true` for real-time streaming |
-| `maxTokens` | `number` | No | — | Maximum tokens in the response |
-| `temperature` | `number` | No | — | Controls randomness (0 = deterministic, higher = more creative) |
-| `web` | `'auto' \| 'always'` | No | — | `'auto'` — model triggers web search when it needs to. `'always'` — model always triggers web search. |
+| `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
+| `temperature` | `number` | No | `0.7` | Controls randomness (0 = deterministic, 2 = very creative) |
+| `web` | `'auto' \| 'always'` | No | — | `'auto'` = search when needed, `'always'` = always search |
 
 ### Message Format
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `role` | `'system' \| 'user' \| 'assistant'` | Yes | Who is speaking |
-| `content` | `string` | Yes | The message text |
-| `image` | `string \| string[]` | No | Image URL(s) for vision |
-| `video` | `string \| string[]` | No | Video URL(s) for vision |
+| `role` | `'system' \| 'user' \| 'assistant'` | **Yes** | Who is speaking |
+| `content` | `string` | **Yes** | The message text |
+| `image` | `string \| string[]` | No | Image URL(s) for vision (use with `jassie-bolt`) |
+| `video` | `string \| string[]` | No | Video URL(s) for vision (use with `jassie-bolt`) |
 
 ### Text Response
 
@@ -211,7 +309,7 @@ Generate code using a model optimized for programming tasks.
 
 | Model | Type | Description |
 |---|---|---|
-| `jassie-code` | Text → Code | Your senior engineer on call. Writes, refactors, and debugs across dozens of languages with deep codebase awareness. Supports multi-language code generation, context-aware refactoring, unit test generation, and deterministic output control. |
+| `jassie-code` | Text → Code | Your senior engineer on call. Writes, refactors, and debugs across dozens of languages with deep codebase awareness. Supports multi-language code generation, context-aware refactoring, unit test generation, and deterministic output control. **Rate Limits:** 5M TPM, 600 RPM |
 
 ### Basic Usage
 
@@ -246,12 +344,12 @@ for await (const chunk of stream) {
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-code'` | Yes | — | Model to use |
-| `messages` | `Message[]` | Yes | — | Array of conversation messages |
+| `model` | `'jassie-code'` | **Yes** | — | Model to use |
+| `messages` | `Message[]` | **Yes** | — | Array of conversation messages |
 | `stream` | `boolean` | No | `false` | Set `true` for real-time streaming |
-| `maxTokens` | `number` | No | — | Maximum tokens in the response |
-| `temperature` | `number` | No | — | Controls randomness (lower = more precise code) |
-| `web` | `'auto' \| 'always'` | No | — | `'auto'` — model triggers web search when it needs to. `'always'` — model always triggers web search. |
+| `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
+| `temperature` | `number` | No | `0.7` | Controls randomness (lower = more precise code) |
+| `web` | `'auto' \| 'always'` | No | — | `'auto'` = search when needed, `'always'` = always search |
 
 > The response format is the same as [Text Response](#text-response).
 
@@ -323,17 +421,17 @@ const response = await client.images.generate({
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-pixel' \| 'jassie-pixel-x'` | Yes | — | Model to use |
-| `prompt` | `string` | Yes | — | Text description of the image to generate |
+| `model` | `'jassie-pixel' \| 'jassie-pixel-x'` | **Yes** | — | Model to use (`pixel` = 2K, `pixel-x` = 4K) |
+| `prompt` | `string` | **Yes** | — | Text description of the image to generate |
 | `reference` | `string` | No | — | URL of a reference image for style/content guidance |
 | `first_image` | `string` | No | — | URL of the starting image for interpolation |
 | `last_image` | `string` | No | — | URL of the ending image for interpolation |
-| `width` | `number` | No | — | Image width in pixels (must be divisible by 8) |
-| `height` | `number` | No | — | Image height in pixels (must be divisible by 8) |
-| `guidance_scale` | `number` | No | `7.5` | How closely to follow the prompt (higher = more literal) |
-| `num_inference_steps` | `number` | No | `50` | Number of denoising steps (higher = more detail, slower) |
+| `width` | `number` | No | Model default | Image width in pixels (must be divisible by 8) |
+| `height` | `number` | No | Model default | Image height in pixels (must be divisible by 8) |
+| `guidance_scale` | `number` | No | `7.5` | Prompt adherence (1-20, higher = more literal) |
+| `num_inference_steps` | `number` | No | `50` | Quality steps (higher = more detail, slower) |
 | `negative_prompt` | `string` | No | — | What to avoid in the generated image |
-| `seed` | `number` | No | — | Seed for reproducible results |
+| `seed` | `number` | No | Random | Seed for reproducible results |
 
 ### Image Response
 
@@ -428,17 +526,20 @@ console.log(result.videoUrl);
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema-4k'` | Yes | — | Model to use |
-| `prompt` | `string` | Yes | — | Text description of the video to generate |
-| `duration` | `number` | Yes | — | Video duration in seconds (`5` or `10`) |
-| `image` | `string` | No | — | Reference image URL to guide video generation |
-| `seed` | `number` | No | — | Seed for reproducible results |
-| `camera_motion` | `string` | No | — | Camera movement (e.g. `'pan_left'`, `'zoom_in'`) |
+| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema-4k'` | **Yes** | — | Model to use (`vibe` = 720p, `motion` = 1080p) |
+| `prompt` | `string` | **Yes** | — | Text description of the video to generate |
+| `duration` | `number` | **Yes** | — | Video duration in seconds (`5` or `10`) |
+| `image` | `string` | No | — | Reference image URL for image-to-video |
+| `seed` | `number` | No | Random | Seed for reproducible results |
+| `camera_motion` | `string` | No | — | Camera movement hint (see options below) |
 | `negative_prompt` | `string` | No | — | What to avoid in the generated video |
+
+**Camera Motion Options:**
+`'zoom_in'` | `'zoom_out'` | `'pan_left'` | `'pan_right'` | `'tilt_up'` | `'tilt_down'` | `'orbit'` | `'dolly_in'` | `'dolly_out'` | `'static'`
 
 ### Poll Options
 
-Used with `poll()` and `generateAndWait()`:
+Used with `poll()` and `generateAndWait()` — all parameters are optional:
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -470,10 +571,12 @@ Generate original music tracks with lyrics and style tags. Music generation is *
 
 ### Generate and Wait (Recommended)
 
+**With lyrics (vocal track):**
+
 ```typescript
 const result = await client.music.generateAndWait({
   model: 'jassie-beat',
-  tags: 'lo-fi, chill, ambient, piano',
+  tags: 'pop, upbeat, female vocals',
   lyrics: 'Calm and peaceful, floating through the night\nStars above are shining bright',
   duration: 30,
 });
@@ -483,14 +586,23 @@ if (result.status === 'completed') {
 }
 ```
 
+**Without lyrics (instrumental):**
+
+```typescript
+const result = await client.music.generateAndWait({
+  model: 'jassie-beat',
+  tags: 'lo-fi, chill, ambient, piano, instrumental',
+  duration: 60,
+});
+```
+
 ### Generate and Wait with Progress
 
 ```typescript
 const result = await client.music.generateAndWait(
   {
     model: 'jassie-beat',
-    tags: 'pop, upbeat, vocals',
-    lyrics: 'Hello world, this is a test song\nJassie AI makes it strong',
+    tags: 'electronic, upbeat, dance',
     duration: 30,
   },
   {
@@ -529,11 +641,18 @@ console.log(result.musicUrl);
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-beat'` | Yes | — | Model to use |
-| `tags` | `string` | Yes | — | Comma-separated genre/style tags (e.g. `'lo-fi, chill, piano'`) |
-| `lyrics` | `string` | Yes | — | Song lyrics (use `\n` for line breaks) |
-| `duration` | `number` | Yes | — | Track duration in seconds (5–240) |
-| `seed` | `number` | No | — | Seed for reproducible results |
+| `model` | `'jassie-beat'` | **Yes** | — | Model to use |
+| `tags` | `string` | **Yes** | — | Comma-separated genre/style tags (e.g. `'lo-fi, chill, piano'`) |
+| `duration` | `number` | **Yes** | — | Track duration in seconds (min: 5, max: 240) |
+| `lyrics` | `string` | No | — | Song lyrics (use `\n` for line breaks). Omit for instrumental. |
+| `seed` | `number` | No | Random | Seed for reproducible results |
+
+**Example Tags:**
+- **Genre:** `pop`, `rock`, `electronic`, `jazz`, `classical`, `hip-hop`, `r&b`, `country`, `folk`
+- **Mood:** `chill`, `upbeat`, `melancholic`, `energetic`, `peaceful`, `dramatic`
+- **Instruments:** `piano`, `guitar`, `synth`, `drums`, `strings`, `brass`
+- **Tempo:** `slow`, `medium`, `fast`, `120bpm`
+- **Vocals:** `male vocals`, `female vocals`, `choir`, `instrumental`
 
 > **Note:** Poll options are the same as [Video Poll Options](#poll-options).
 
@@ -796,6 +915,40 @@ import type {
   Usage,
 } from 'jassie-ai';
 ```
+
+---
+
+## Rate Limits
+
+| Model | Tokens Per Minute (TPM) | Requests Per Minute (RPM) |
+|-------|-------------------------|---------------------------|
+| `jassie-pulse` | 5,000,000 | 600 |
+| `jassie-bolt` | 100,000 | 60 |
+| `jassie-code` | 5,000,000 | 600 |
+| `jassie-pixel` | — | 60 |
+| `jassie-pixel-x` | — | 60 |
+| `jassie-vibe` | — | 30 |
+| `jassie-motion` | — | 30 |
+| `jassie-beat` | — | 30 |
+
+> Rate limits may vary based on your plan. Check your dashboard at [jassie.ai](https://jassie.ai) for your current limits.
+
+---
+
+## About
+
+Jassie AI is developed and maintained by [Airbin](https://airbin.app).
+
+### Developers
+
+- **Harmandeep Mand** — [harmandeepmand@airbin.app](mailto:harmandeepmand@airbin.app)
+- **Muhammad Hanzla** — [itshanzla@airbin.app](mailto:itshanzla@airbin.app)
+
+### Support
+
+- Website: [airbin.app](https://airbin.app)
+- API Documentation: [jassie.ai](https://jassie.ai)
+- Issues: [GitHub Issues](https://github.com/AirbinApp/jassie-ai-sdk/issues)
 
 ---
 
