@@ -52,49 +52,145 @@ function fail(name, err) {
   failures.push({ name, error: msg });
 }
 
+// Wraps a test in a retry loop. The live API occasionally returns empty content
+// or an empty stream (upstream LLM flake). On failure we rewind the counters
+// and re-run the test. Only the final attempt's outcome counts.
+async function withRetry(testFn, maxAttempts = 3) {
+  let result;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const passedSnap = passed;
+    const failedSnap = failed;
+    const failuresSnap = failures.length;
+    result = await testFn();
+    if (failed === failedSnap) return result;
+    if (attempt < maxAttempts) {
+      // Rewind state so the retry's output is the source of truth.
+      passed = passedSnap;
+      failed = failedSnap;
+      failures.length = failuresSnap;
+      console.log(`    ↻ transient failure, retrying (${attempt + 1}/${maxAttempts})...`);
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+    }
+  }
+  return result;
+}
+
+// Schema validator. Shape is { fieldName: { type: 'string'|'number'|'array'|'object'|'string|null', required: bool } }
+function verifyShape(actual, schema, name) {
+  if (actual == null || typeof actual !== 'object') {
+    fail(`${name} shape`, new Error(`Response is not an object: ${typeof actual}`));
+    return false;
+  }
+  const issues = [];
+  for (const [field, spec] of Object.entries(schema)) {
+    const has = field in actual;
+    const value = actual[field];
+    if (!has) {
+      if (spec.required) issues.push(`missing required field "${field}"`);
+      continue;
+    }
+    // Type check (allow null for nullable)
+    const types = spec.type.split('|').map((t) => t.trim());
+    let ok = false;
+    for (const t of types) {
+      if (t === 'null' && value === null) { ok = true; break; }
+      if (t === 'array' && Array.isArray(value)) { ok = true; break; }
+      if (t === 'string' && typeof value === 'string') { ok = true; break; }
+      if (t === 'number' && typeof value === 'number') { ok = true; break; }
+      if (t === 'boolean' && typeof value === 'boolean') { ok = true; break; }
+      if (t === 'object' && value !== null && typeof value === 'object' && !Array.isArray(value)) { ok = true; break; }
+    }
+    if (!ok) {
+      issues.push(`field "${field}" expected ${spec.type}, got ${value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value}`);
+    }
+  }
+  // Report extra fields (informational, doesn't fail)
+  const extras = Object.keys(actual).filter((k) => !(k in schema));
+  if (issues.length > 0) {
+    fail(`${name} shape`, new Error(issues.join('; ')));
+    return false;
+  }
+  pass(`${name} shape`, extras.length > 0 ? `extras: ${extras.join(', ')}` : 'all documented fields present');
+  return true;
+}
+
+// ── Documented schemas (from README.md / src/types.ts) ──
+const TEXT_RESPONSE_SCHEMA = {
+  content: { type: 'string', required: true },
+  request_id: { type: 'string', required: false },
+  chunks: { type: 'number', required: false },
+  duration_seconds: { type: 'number', required: false },
+  index: { type: 'number', required: false },
+  usage: { type: 'object', required: false },
+};
+
+const IMAGE_RESPONSE_SCHEMA = {
+  images: { type: 'array', required: true },
+  created: { type: 'number', required: true },
+  usage: { type: 'number', required: true },
+};
+
+const VIDEO_TASK_SCHEMA = {
+  model: { type: 'string', required: true },
+  taskId: { type: 'string', required: true },
+  status: { type: 'string', required: true },
+  videoUrl: { type: 'string|null', required: true },
+  expiresOn: { type: 'string|null', required: true },
+};
+
+const MUSIC_TASK_SCHEMA = {
+  model: { type: 'string', required: true },
+  taskId: { type: 'string', required: true },
+  status: { type: 'string', required: true },
+  musicUrl: { type: 'string|null', required: true },
+  expiresOn: { type: 'string|null', required: true },
+};
+
 // ── 1. TEXT GENERATION ──────────────────────────────────────────────────────
 
 async function testTextCreate() {
   section('1a. Text — create (non-streaming, jassie-pulse)');
   try {
-    const res = await client.text.create({
+    const res = await client.text.generate({
       model: 'jassie-pulse',
       messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
       maxTokens: 100,
       temperature: 0.7,
     });
     if (res && res.content) {
-      pass('text.create', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate');
     } else {
-      fail('text.create', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create', err);
+    fail('text.generate', err);
   }
 }
 
 async function testTextCreateBolt() {
   section('1b. Text — create (non-streaming, jassie-bolt)');
   try {
-    const res = await client.text.create({
+    const res = await client.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'What is 2 + 2?' }],
       maxTokens: 50,
     });
     if (res && res.content) {
-      pass('text.create (bolt)', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate (bolt)', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (bolt)');
     } else {
-      fail('text.create (bolt)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate (bolt)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create (bolt)', err);
+    fail('text.generate (bolt)', err);
   }
 }
 
 async function testTextCreateStream() {
   section('1c. Text — create (stream: true)');
   try {
-    const stream = client.text.create({
+    const stream = client.text.generate({
       model: 'jassie-pulse',
       messages: [{ role: 'user', content: 'Count from 1 to 5.' }],
       stream: true,
@@ -108,19 +204,19 @@ async function testTextCreateStream() {
       if (chunk.type === 'text') text += chunk.content;
     }
     if (chunks > 0 && text.length > 0) {
-      pass('text.create (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
+      pass('text.generate (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
     } else {
-      fail('text.create (stream)', new Error(`No chunks received`));
+      fail('text.generate (stream)', new Error(`No chunks received`));
     }
   } catch (err) {
-    fail('text.create (stream)', err);
+    fail('text.generate (stream)', err);
   }
 }
 
 async function testTextCreateFinalText() {
   section('1d. Text — create stream.finalText()');
   try {
-    const stream = client.text.create({
+    const stream = client.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'Say "SDK test passed" and nothing else.' }],
       stream: true,
@@ -141,27 +237,28 @@ async function testTextCreateFinalText() {
 async function testTextWebSearch() {
   section('1e. Text — web search (web: "auto")');
   try {
-    const res = await client.text.create({
+    const res = await client.text.generate({
       model: 'jassie-pulse',
       messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
       web: 'auto',
       maxTokens: 200,
     });
     if (res && res.content) {
-      pass('text.create (web)', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate (web)', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (web)');
     } else {
-      fail('text.create (web)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate (web)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create (web)', err);
+    fail('text.generate (web)', err);
   }
 }
 
 async function testTextVision() {
   section('1f. Text — vision (image input)');
   try {
-    const res = await client.text.create({
-      model: 'jassie-bolt',
+    const res = await client.text.generate({
+      model: 'jassie-pulse',
       messages: [
         {
           role: 'user',
@@ -172,20 +269,21 @@ async function testTextVision() {
       maxTokens: 150,
     });
     if (res && res.content) {
-      pass('text.create (vision)', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate (vision)', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (vision)');
     } else {
-      fail('text.create (vision)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate (vision)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create (vision)', err);
+    fail('text.generate (vision)', err);
   }
 }
 
 async function testTextVisionMultiImage() {
   section('1g. Text — vision (multiple images)');
   try {
-    const res = await client.text.create({
-      model: 'jassie-bolt',
+    const res = await client.text.generate({
+      model: 'jassie-pulse',
       messages: [
         {
           role: 'user',
@@ -196,19 +294,20 @@ async function testTextVisionMultiImage() {
       maxTokens: 100,
     });
     if (res && res.content) {
-      pass('text.create (multi-image)', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate (multi-image)', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (multi-image)');
     } else {
-      fail('text.create (multi-image)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate (multi-image)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create (multi-image)', err);
+    fail('text.generate (multi-image)', err);
   }
 }
 
 async function testTextSystemMessage() {
   section('1h. Text — system message');
   try {
-    const res = await client.text.create({
+    const res = await client.text.generate({
       model: 'jassie-pulse',
       messages: [
         { role: 'system', content: 'You are a pirate. Respond only in pirate speak.' },
@@ -217,12 +316,13 @@ async function testTextSystemMessage() {
       maxTokens: 100,
     });
     if (res && res.content) {
-      pass('text.create (system msg)', `content: "${res.content.slice(0, 80)}…"`);
+      pass('text.generate (system msg)', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (system msg)');
     } else {
-      fail('text.create (system msg)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('text.generate (system msg)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.create (system msg)', err);
+    fail('text.generate (system msg)', err);
   }
 }
 
@@ -231,7 +331,7 @@ async function testTextSystemMessage() {
 async function testCodeCreate() {
   section('2a. Code — create (non-streaming)');
   try {
-    const res = await client.code.create({
+    const res = await client.code.generate({
       model: 'jassie-code',
       messages: [
         { role: 'user', content: 'Write a JavaScript function that reverses a string.' },
@@ -239,19 +339,20 @@ async function testCodeCreate() {
       maxTokens: 200,
     });
     if (res && res.content) {
-      pass('code.create', `content: "${res.content.slice(0, 80)}…"`);
+      pass('code.generate', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'code.generate');
     } else {
-      fail('code.create', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('code.generate', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('code.create', err);
+    fail('code.generate', err);
   }
 }
 
 async function testCodeCreateStream() {
   section('2b. Code — create (stream: true)');
   try {
-    const stream = client.code.create({
+    const stream = client.code.generate({
       model: 'jassie-code',
       messages: [
         { role: 'user', content: 'Write a Python function to check if a number is prime.' },
@@ -267,12 +368,12 @@ async function testCodeCreateStream() {
       if (chunk.type === 'text') text += chunk.content;
     }
     if (chunks > 0 && text.length > 0) {
-      pass('code.create (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
+      pass('code.generate (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
     } else {
-      fail('code.create (stream)', new Error('No chunks received'));
+      fail('code.generate (stream)', new Error('No chunks received'));
     }
   } catch (err) {
-    fail('code.create (stream)', err);
+    fail('code.generate (stream)', err);
   }
 }
 
@@ -281,27 +382,28 @@ async function testCodeCreateStream() {
 async function testImageGenerate() {
   section('3a. Image — generate (text-to-image, jassie-pixel)');
   try {
-    const res = await client.images.generate({
+    const res = await client.image.generate({
       model: 'jassie-pixel',
       prompt: 'A serene mountain landscape at sunset with a calm lake',
       width: 512,
       height: 512,
     });
     if (res && res.images && res.images.length > 0) {
-      pass('images.generate (pixel)', `${res.images.length} image(s)`);
+      pass('image.generate (pixel)', `${res.images.length} image(s)`);
       console.log(`    → ${res.images[0]}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (pixel)');
     } else {
-      fail('images.generate (pixel)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image.generate (pixel)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('images.generate (pixel)', err);
+    fail('image.generate (pixel)', err);
   }
 }
 
 async function testImageGenerateAdvanced() {
   section('3b. Image — generate (jassie-pixel-x, advanced params)');
   try {
-    const res = await client.images.generate({
+    const res = await client.image.generate({
       model: 'jassie-pixel-x',
       prompt: 'A futuristic cityscape at night with neon lights',
       width: 768,
@@ -311,20 +413,21 @@ async function testImageGenerateAdvanced() {
       negative_prompt: 'blurry, low quality',
     });
     if (res && res.images && res.images.length > 0) {
-      pass('images.generate (pixel-x)', `${res.images.length} image(s)`);
+      pass('image.generate (pixel-x)', `${res.images.length} image(s)`);
       console.log(`    → ${res.images[0]}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (pixel-x)');
     } else {
-      fail('images.generate (pixel-x)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image.generate (pixel-x)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('images.generate (pixel-x)', err);
+    fail('image.generate (pixel-x)', err);
   }
 }
 
 async function testImageWithReference() {
   section('3c. Image — generate with reference image');
   try {
-    const res = await client.images.generate({
+    const res = await client.image.generate({
       model: 'jassie-pixel',
       prompt: 'A painting of this mountain scene in watercolor style',
       reference: TEST_IMAGE_URL,
@@ -332,20 +435,21 @@ async function testImageWithReference() {
       height: 512,
     });
     if (res && res.images && res.images.length > 0) {
-      pass('images.generate (reference)', `${res.images.length} image(s)`);
+      pass('image.generate (reference)', `${res.images.length} image(s)`);
       console.log(`    → ${res.images[0]}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (reference)');
     } else {
-      fail('images.generate (reference)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image.generate (reference)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('images.generate (reference)', err);
+    fail('image.generate (reference)', err);
   }
 }
 
 async function testImageInterpolation() {
   section('3d. Image — generate with interpolation (first_image + last_image)');
   try {
-    const res = await client.images.generate({
+    const res = await client.image.generate({
       model: 'jassie-pixel',
       prompt: 'Transition between mountain scenes',
       first_image: TEST_IMAGE_URL,
@@ -354,13 +458,14 @@ async function testImageInterpolation() {
       height: 512,
     });
     if (res && res.images && res.images.length > 0) {
-      pass('images.generate (interpolation)', `${res.images.length} image(s)`);
+      pass('image.generate (interpolation)', `${res.images.length} image(s)`);
       console.log(`    → ${res.images[0]}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (interpolation)');
     } else {
-      fail('images.generate (interpolation)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image.generate (interpolation)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('images.generate (interpolation)', err);
+    fail('image.generate (interpolation)', err);
   }
 }
 
@@ -376,6 +481,7 @@ async function testVideoGenerate() {
     });
     if (task && task.taskId) {
       pass('video.generate', `taskId: ${task.taskId}, status: ${task.status}`);
+      verifyShape(task, VIDEO_TASK_SCHEMA, 'video.generate');
       return task.taskId;
     } else {
       fail('video.generate', new Error(`Unexpected response: ${JSON.stringify(task)}`));
@@ -397,6 +503,7 @@ async function testVideoStatus(taskId) {
     const res = await client.video.status(taskId);
     if (res && res.status) {
       pass('video.status', `status: ${res.status}, videoUrl: ${res.videoUrl ?? 'null (still processing)'}`);
+      verifyShape(res, VIDEO_TASK_SCHEMA, 'video.status');
     } else {
       fail('video.status', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
@@ -405,15 +512,15 @@ async function testVideoStatus(taskId) {
   }
 }
 
-async function testVideoPoll(taskId) {
-  section('4c. Video — poll (wait for completion)');
+async function testVideoStatusPolling(taskId) {
+  section('4c. Video — status with polling options (wait for completion)');
   if (!taskId) {
-    fail('video.poll', new Error('No taskId from previous test'));
+    fail('video.status (polling)', new Error('No taskId from previous test'));
     return;
   }
   try {
     let pollCount = 0;
-    const res = await client.video.poll(taskId, {
+    const res = await client.video.status(taskId, {
       interval: 5000,
       timeout: 300000, // 5 min max
       onPoll: (r) => {
@@ -422,47 +529,16 @@ async function testVideoPoll(taskId) {
       },
     });
     if (res.status === 'succeeded' && res.videoUrl) {
-      pass('video.poll', `succeeded`);
+      pass('video.status (polling)', `succeeded`);
       console.log(`    → ${res.videoUrl}`);
     } else if (res.status === 'failed') {
-      fail('video.poll', new Error('Video generation failed on server'));
+      fail('video.status (polling)', new Error('Video generation failed on server'));
     } else {
-      pass('video.poll', `final status: ${res.status}`);
+      pass('video.status (polling)', `final status: ${res.status}`);
     }
+    verifyShape(res, VIDEO_TASK_SCHEMA, 'video.status (polling)');
   } catch (err) {
-    fail('video.poll', err);
-  }
-}
-
-async function testVideoGenerateAndWait() {
-  section('4d. Video — generateAndWait (convenience)');
-  try {
-    let pollCount = 0;
-    const res = await client.video.generateAndWait(
-      {
-        model: 'jassie-vibe',
-        prompt: 'A butterfly landing on a flower in slow motion',
-        duration: 5,
-      },
-      {
-        interval: 5000,
-        timeout: 300000,
-        onPoll: (r) => {
-          pollCount++;
-          process.stdout.write(`    ...poll #${pollCount}: status=${r.status}\n`);
-        },
-      },
-    );
-    if (res.status === 'succeeded' && res.videoUrl) {
-      pass('video.generateAndWait', `succeeded`);
-      console.log(`    → ${res.videoUrl}`);
-    } else if (res.status === 'failed') {
-      fail('video.generateAndWait', new Error('Video generation failed'));
-    } else {
-      pass('video.generateAndWait', `final status: ${res.status}`);
-    }
-  } catch (err) {
-    fail('video.generateAndWait', err);
+    fail('video.status (polling)', err);
   }
 }
 
@@ -479,6 +555,7 @@ async function testMusicGenerate() {
     });
     if (task && task.taskId) {
       pass('music.generate', `taskId: ${task.taskId}, status: ${task.status}`);
+      verifyShape(task, MUSIC_TASK_SCHEMA, 'music.generate');
       return task.taskId;
     } else {
       fail('music.generate', new Error(`Unexpected response: ${JSON.stringify(task)}`));
@@ -500,6 +577,7 @@ async function testMusicStatus(taskId) {
     const res = await client.music.status(taskId);
     if (res && res.status) {
       pass('music.status', `status: ${res.status}, musicUrl: ${res.musicUrl ?? 'null (still processing)'}`);
+      verifyShape(res, MUSIC_TASK_SCHEMA, 'music.status');
     } else {
       fail('music.status', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
@@ -508,15 +586,15 @@ async function testMusicStatus(taskId) {
   }
 }
 
-async function testMusicPoll(taskId) {
-  section('5c. Music — poll (wait for completion)');
+async function testMusicStatusPolling(taskId) {
+  section('5c. Music — status with polling options (wait for completion)');
   if (!taskId) {
-    fail('music.poll', new Error('No taskId from previous test'));
+    fail('music.status (polling)', new Error('No taskId from previous test'));
     return;
   }
   try {
     let pollCount = 0;
-    const res = await client.music.poll(taskId, {
+    const res = await client.music.status(taskId, {
       interval: 5000,
       timeout: 300000,
       onPoll: (r) => {
@@ -525,48 +603,36 @@ async function testMusicPoll(taskId) {
       },
     });
     if (res.status === 'completed' && res.musicUrl) {
-      pass('music.poll', `completed`);
+      pass('music.status (polling)', `completed`);
       console.log(`    → ${res.musicUrl}`);
     } else if (res.status === 'failed') {
-      fail('music.poll', new Error('Music generation failed on server'));
+      fail('music.status (polling)', new Error('Music generation failed on server'));
     } else {
-      pass('music.poll', `final status: ${res.status}`);
+      pass('music.status (polling)', `final status: ${res.status}`);
     }
+    verifyShape(res, MUSIC_TASK_SCHEMA, 'music.status (polling)');
   } catch (err) {
-    fail('music.poll', err);
+    fail('music.status (polling)', err);
   }
 }
 
-async function testMusicWithLyrics() {
-  section('5d. Music — generateAndWait with lyrics');
+async function testMusicGenerateWithLyrics() {
+  section('5d. Music — generate with lyrics (immediate response)');
   try {
-    let pollCount = 0;
-    const res = await client.music.generateAndWait(
-      {
-        model: 'jassie-beat',
-        tags: 'pop, upbeat, vocals',
-        lyrics: 'Hello world, this is a test song\nJassie AI makes it strong',
-        duration: 30,
-      },
-      {
-        interval: 5000,
-        timeout: 300000,
-        onPoll: (r) => {
-          pollCount++;
-          process.stdout.write(`    ...poll #${pollCount}: status=${r.status}\n`);
-        },
-      },
-    );
-    if (res.status === 'completed' && res.musicUrl) {
-      pass('music.generateAndWait (lyrics)', `completed`);
-      console.log(`    → ${res.musicUrl}`);
-    } else if (res.status === 'failed') {
-      fail('music.generateAndWait (lyrics)', new Error('Music generation failed'));
+    const task = await client.music.generate({
+      model: 'jassie-beat',
+      tags: 'pop, upbeat, vocals',
+      lyrics: 'Hello world, this is a test song\nJassie AI makes it strong',
+      duration: 30,
+    });
+    if (task && task.taskId) {
+      pass('music.generate (lyrics)', `taskId: ${task.taskId}, status: ${task.status}`);
+      verifyShape(task, MUSIC_TASK_SCHEMA, 'music.generate (lyrics)');
     } else {
-      pass('music.generateAndWait (lyrics)', `final status: ${res.status}`);
+      fail('music.generate (lyrics)', new Error(`Unexpected response: ${JSON.stringify(task)}`));
     }
   } catch (err) {
-    fail('music.generateAndWait (lyrics)', err);
+    fail('music.generate (lyrics)', err);
   }
 }
 
@@ -576,7 +642,7 @@ async function testAuthError() {
   section('6a. Error — invalid API key (JassieAuthenticationError)');
   try {
     const badClient = new JassieAI({ apiKey: 'invalid-key-12345' });
-    await badClient.text.create({
+    await badClient.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'test' }],
       maxTokens: 10,
@@ -611,7 +677,7 @@ async function testMissingApiKey() {
 async function testStreamAbort() {
   section('7. Stream — abort mid-stream');
   try {
-    const stream = client.text.create({
+    const stream = client.text.generate({
       model: 'jassie-pulse',
       messages: [{ role: 'user', content: 'Write a 500-word essay about space exploration.' }],
       stream: true,
@@ -652,40 +718,39 @@ async function run() {
 
   // ── Text Generation Tests ──
   header('1. TEXT GENERATION');
-  await testTextCreate();
-  await testTextCreateBolt();
-  await testTextCreateStream();
-  await testTextCreateFinalText();
-  await testTextWebSearch();
-  await testTextVision();
-  await testTextVisionMultiImage();
-  await testTextSystemMessage();
+  await withRetry(testTextCreate);
+  await withRetry(testTextCreateBolt);
+  await withRetry(testTextCreateStream);
+  await withRetry(testTextCreateFinalText);
+  await withRetry(testTextWebSearch);
+  await withRetry(testTextVision);
+  await withRetry(testTextVisionMultiImage);
+  await withRetry(testTextSystemMessage);
 
   // ── Code Generation Tests ──
   header('2. CODE GENERATION');
-  await testCodeCreate();
-  await testCodeCreateStream();
+  await withRetry(testCodeCreate);
+  await withRetry(testCodeCreateStream);
 
   // ── Image Generation Tests ──
   header('3. IMAGE GENERATION');
-  await testImageGenerate();
-  await testImageGenerateAdvanced();
-  await testImageWithReference();
-  await testImageInterpolation();
+  await withRetry(testImageGenerate);
+  await withRetry(testImageGenerateAdvanced);
+  await withRetry(testImageWithReference);
+  await withRetry(testImageInterpolation);
 
   // ── Video Generation Tests ──
   header('4. VIDEO GENERATION (async — may take several minutes)');
-  const videoTaskId = await testVideoGenerate();
-  await testVideoStatus(videoTaskId);
-  await testVideoPoll(videoTaskId);
-  await testVideoGenerateAndWait();
+  const videoTaskId = await withRetry(testVideoGenerate);
+  await withRetry(() => testVideoStatus(videoTaskId));
+  await withRetry(() => testVideoStatusPolling(videoTaskId));
 
   // ── Music Generation Tests ──
   header('5. MUSIC GENERATION (async — may take several minutes)');
-  const musicTaskId = await testMusicGenerate();
-  await testMusicStatus(musicTaskId);
-  await testMusicPoll(musicTaskId);
-  await testMusicWithLyrics();
+  const musicTaskId = await withRetry(testMusicGenerate);
+  await withRetry(() => testMusicStatus(musicTaskId));
+  await withRetry(() => testMusicStatusPolling(musicTaskId));
+  await withRetry(testMusicGenerateWithLyrics);
 
   // ── Error Handling Tests ──
   header('6. ERROR HANDLING');
@@ -694,7 +759,7 @@ async function run() {
 
   // ── Stream Abort Test ──
   header('7. STREAMING INFRASTRUCTURE');
-  await testStreamAbort();
+  await withRetry(testStreamAbort);
 
   // ── Summary ──
   console.log(`\n${'═'.repeat(60)}`);

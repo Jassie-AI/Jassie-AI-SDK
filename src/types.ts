@@ -122,7 +122,6 @@ export interface MusicGenerateParams {
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
-  type: string;
   content: string;
   request_id?: string;
   chunks?: number;
@@ -133,14 +132,14 @@ export interface TextResponse {
 
 export interface ImageResponse {
   images: string[];
-  created: string;
+  created: number;
   usage: number;
 }
 
 export interface VideoTaskResponse {
   model: string;
   taskId: string;
-  status: 'pending' | 'processing' | 'succeeded' | 'failed';
+  status: 'pending' | 'running' | 'succeeded' | 'failed';
   videoUrl: string | null;
   expiresOn: string | null;
 }

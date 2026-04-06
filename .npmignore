@@ -1,0 +1,9 @@
+.env
+.gitignore
+package-lock.json
+.claude
+.github
+.DS_Store
+.npmignore
+tsconfig.cjs.json
+tsconfig.json

@@ -17,10 +17,10 @@ export class Code {
     this.client = client;
   }
 
-  /** Create a code generation. Set stream: true for real-time streaming. */
-  create(params: CodeStreamParams): JassieStream;
-  create(params: CodeGenerateParams): Promise<TextResponse>;
-  create(
+  /** Generate code. Set stream: true for real-time streaming. */
+  generate(params: CodeStreamParams): JassieStream;
+  generate(params: CodeGenerateParams): Promise<TextResponse>;
+  generate(
     params: CodeGenerateParams | CodeStreamParams,
   ): JassieStream | Promise<TextResponse> {
     if (params.stream === true) {

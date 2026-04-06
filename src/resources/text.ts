@@ -18,10 +18,10 @@ export class Text {
     this.client = client;
   }
 
-  /** Create a text generation. Set stream: true for real-time streaming. */
-  create(params: TextStreamParams): JassieStream;
-  create(params: TextGenerateParams): Promise<TextResponse>;
-  create(
+  /** Generate a text response. Set stream: true for real-time streaming. */
+  generate(params: TextStreamParams): JassieStream;
+  generate(params: TextGenerateParams): Promise<TextResponse>;
+  generate(
     params: TextGenerateParams | TextStreamParams,
   ): JassieStream | Promise<TextResponse> {
     if (params.stream === true) {

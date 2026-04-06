@@ -1,13 +1,13 @@
 import type { ImageGenerateParams, ImageResponse } from '../types.js';
 
-export interface ImagesClient {
+export interface ImageClient {
   _request<T>(method: string, path: string, body?: any): Promise<T>;
 }
 
-export class Images {
-  private client: ImagesClient;
+export class Image {
+  private client: ImageClient;
 
-  constructor(client: ImagesClient) {
+  constructor(client: ImageClient) {
     this.client = client;
   }
 

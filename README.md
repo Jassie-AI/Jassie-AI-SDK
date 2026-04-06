@@ -66,17 +66,11 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `apiKey` | `string` | **Yes** | — | Your Jassie AI API key |
-| `baseURL` | `string` | No | `'https://api.jassie.ai'` | API base URL (for proxies or custom endpoints) |
-| `timeout` | `number` | No | `60000` | Request timeout in milliseconds |
-| `maxRetries` | `number` | No | `2` | Number of retry attempts for failed requests |
-| `platform` | `'node' \| 'web' \| 'react-native'` | No | Auto-detected | Force a specific platform adapter |
 
 ```typescript
 // Full configuration example
 const client = new JassieAI({
   apiKey: 'your-api-key',      // Required
-  timeout: 30000,              // Optional: 30 second timeout
-  maxRetries: 3,               // Optional: retry up to 3 times
 });
 ```
 
@@ -91,7 +85,7 @@ A quick overview of required and optional parameters for each generation type.
 ### Text & Code Generation
 
 ```typescript
-client.text.create({
+client.text.generate({
   model: 'jassie-pulse',        // ✅ Required: 'jassie-pulse' | 'jassie-bolt'
   messages: [...],              // ✅ Required: Array of messages
   stream: true,                 // ⚪ Optional: Enable streaming (default: false)
@@ -100,7 +94,7 @@ client.text.create({
   web: 'auto',                  // ⚪ Optional: Web search ('auto' | 'always')
 });
 
-client.code.create({
+client.code.generate({
   model: 'jassie-code',         // ✅ Required
   messages: [...],              // ✅ Required
   // Same optional params as text
@@ -110,7 +104,7 @@ client.code.create({
 ### Image Generation
 
 ```typescript
-client.images.generate({
+client.image.generate({
   model: 'jassie-pixel',        // ✅ Required: 'jassie-pixel' | 'jassie-pixel-x'
   prompt: 'A sunset...',        // ✅ Required: Image description
   reference: 'https://...',     // ⚪ Optional: Reference image URL
@@ -127,8 +121,11 @@ client.images.generate({
 
 ### Video Generation
 
+Video generation is **asynchronous** — `generate()` returns a `taskId` immediately, then you check `status()` whenever you want.
+
 ```typescript
-client.video.generateAndWait({
+// 1. Start the job — returns immediately
+const task = await client.video.generate({
   model: 'jassie-vibe',         // ✅ Required: 'jassie-vibe' | 'jassie-motion'
   prompt: 'Ocean waves...',     // ✅ Required: Video description
   duration: 5,                  // ✅ Required: Duration in seconds (5 or 10)
@@ -137,18 +134,33 @@ client.video.generateAndWait({
   camera_motion: 'pan_left',    // ⚪ Optional: Camera movement
   negative_prompt: 'blurry',    // ⚪ Optional: What to avoid
 });
+
+console.log(task.taskId); // → save this to check later
+
+// 2. Check status whenever you want — single quick check
+const result = await client.video.status(task.taskId);
+console.log(result.status, result.videoUrl);
 ```
 
 ### Music Generation
 
+Music generation works the same way — `generate()` returns immediately, then you check `status()`.
+
 ```typescript
-client.music.generateAndWait({
+// 1. Start the job — returns immediately
+const task = await client.music.generate({
   model: 'jassie-beat',         // ✅ Required
   tags: 'lo-fi, chill, piano',  // ✅ Required: Genre/style tags
   duration: 30,                 // ✅ Required: Duration in seconds (5-240)
   lyrics: 'Your lyrics...',     // ⚪ Optional: Song lyrics
   seed: 42,                     // ⚪ Optional: Reproducibility seed
 });
+
+console.log(task.taskId);
+
+// 2. Check status whenever you want
+const result = await client.music.status(task.taskId);
+console.log(result.status, result.musicUrl);
 ```
 
 ---
@@ -167,7 +179,7 @@ Generate text responses using conversational messages.
 ### Basic Usage
 
 ```typescript
-const response = await client.text.create({
+const response = await client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Explain how DNS works.' }],
 });
@@ -180,7 +192,7 @@ console.log(response.content);
 Use a system message to control the model's behavior:
 
 ```typescript
-const response = await client.text.create({
+const response = await client.text.generate({
   model: 'jassie-pulse',
   messages: [
     { role: 'system', content: 'You are a senior backend engineer. Be concise.' },
@@ -194,7 +206,7 @@ const response = await client.text.create({
 Set `stream: true` to get the response in real-time as it's being generated:
 
 ```typescript
-const stream = client.text.create({
+const stream = client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Write a short poem about the ocean.' }],
   stream: true,
@@ -210,7 +222,7 @@ for await (const chunk of stream) {
 Or collect the full text at once:
 
 ```typescript
-const stream = client.text.create({
+const stream = client.text.generate({
   model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Say hello.' }],
   stream: true,
@@ -225,7 +237,7 @@ console.log(fullText);
 Let the model search the web for up-to-date information:
 
 ```typescript
-const response = await client.text.create({
+const response = await client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'What are the top tech news stories today?' }],
   web: 'auto', // 'auto' = search when needed, 'always' = always search
@@ -237,8 +249,8 @@ const response = await client.text.create({
 Send an image along with your message:
 
 ```typescript
-const response = await client.text.create({
-  model: 'jassie-bolt',
+const response = await client.text.generate({
+  model: 'jassie-pulse',
   messages: [
     {
       role: 'user',
@@ -252,8 +264,8 @@ const response = await client.text.create({
 Send multiple images:
 
 ```typescript
-const response = await client.text.create({
-  model: 'jassie-bolt',
+const response = await client.text.generate({
+  model: 'jassie-pulse',
   messages: [
     {
       role: 'user',
@@ -284,14 +296,13 @@ const response = await client.text.create({
 |---|---|---|---|
 | `role` | `'system' \| 'user' \| 'assistant'` | **Yes** | Who is speaking |
 | `content` | `string` | **Yes** | The message text |
-| `image` | `string \| string[]` | No | Image URL(s) for vision (use with `jassie-bolt`) |
-| `video` | `string \| string[]` | No | Video URL(s) for vision (use with `jassie-bolt`) |
+| `image` | `string \| string[]` | No | Image URL(s) for vision (use with `jassie-pulse`) |
+| `video` | `string \| string[]` | No | Video URL(s) for vision (use with `jassie-pulse`) |
 
 ### Text Response
 
 | Field | Type | Description |
 |---|---|---|
-| `type` | `string` | Response type |
 | `content` | `string` | The generated text |
 | `request_id` | `string` | Unique request identifier |
 | `chunks` | `number` | Total number of chunks |
@@ -314,7 +325,7 @@ Generate code using a model optimized for programming tasks.
 ### Basic Usage
 
 ```typescript
-const response = await client.code.create({
+const response = await client.code.generate({
   model: 'jassie-code',
   messages: [
     { role: 'user', content: 'Write a function to reverse a linked list in Python.' },
@@ -327,7 +338,7 @@ console.log(response.content);
 ### Streaming
 
 ```typescript
-const stream = client.code.create({
+const stream = client.code.generate({
   model: 'jassie-code',
   messages: [
     { role: 'user', content: 'Build a REST API with Express and TypeScript.' },
@@ -369,7 +380,7 @@ Generate images from text prompts.
 ### Basic Generation
 
 ```typescript
-const response = await client.images.generate({
+const response = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'A sunset over mountains, digital art style',
 });
@@ -380,7 +391,7 @@ console.log(response.images[0]); // Image URL
 ### With Advanced Options
 
 ```typescript
-const response = await client.images.generate({
+const response = await client.image.generate({
   model: 'jassie-pixel-x',
   prompt: 'A futuristic cityscape at night with neon lights',
   width: 768,
@@ -397,7 +408,7 @@ const response = await client.images.generate({
 Use an existing image as a style or content reference:
 
 ```typescript
-const response = await client.images.generate({
+const response = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'This scene painted in watercolor style',
   reference: 'https://example.com/reference-photo.jpg',
@@ -409,7 +420,7 @@ const response = await client.images.generate({
 Blend between two images:
 
 ```typescript
-const response = await client.images.generate({
+const response = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'A smooth transition between these two scenes',
   first_image: 'https://example.com/start.jpg',
@@ -438,14 +449,14 @@ const response = await client.images.generate({
 | Field | Type | Description |
 |---|---|---|
 | `images` | `string[]` | Array of generated image URLs |
-| `created` | `string` | Timestamp of creation |
+| `created` | `number` | Unix timestamp (seconds) of creation |
 | `usage` | `number` | Usage metric |
 
 ---
 
 ## Video Generation
 
-Generate videos from text prompts. Video generation is **asynchronous** — you start a task and then poll for the result.
+Generate videos from text prompts. Video generation is **asynchronous**: `generate()` returns a `taskId` immediately, then you check the result with `status()` whenever you want.
 
 **Available models:**
 
@@ -455,72 +466,56 @@ Generate videos from text prompts. Video generation is **asynchronous** — you 
 | `jassie-motion` | Multi-Modal → Video + Audio | 1080p Full-HD premium video generation. Higher resolution, smoother motion, and cinematic fidelity — when your content needs to look like it had a production crew behind it. |
 | `jassie-cinema-4k` | Multi-Modal → Video + Audio | 4K cinematic long-form video generation. Narrative-aware scene composition with multi-scene continuity, intelligent camera work, and emotional pacing. *Coming soon.* |
 
-### Generate and Wait (Recommended)
+### 1. Start the Job
 
-The simplest approach — starts generation and automatically polls until complete:
+`generate()` returns immediately with a `taskId`. **It does not wait for the video to finish processing.**
 
 ```typescript
-const result = await client.video.generateAndWait(
-  {
-    model: 'jassie-vibe',
-    prompt: 'A calm ocean wave crashing on a sandy beach',
-    duration: 5,
-  },
-);
+const task = await client.video.generate({
+  model: 'jassie-vibe',
+  prompt: 'A calm ocean wave crashing on a sandy beach',
+  duration: 5,
+});
+
+console.log(task.taskId); // → save this somewhere (DB, queue, frontend state)
+console.log(task.status); // → 'pending'
+```
+
+### 2. Check Status
+
+Use `status(taskId)` to check whether the video is ready. By default it does a **single quick check**:
+
+```typescript
+const result = await client.video.status(task.taskId);
 
 if (result.status === 'succeeded') {
   console.log(result.videoUrl); // Direct URL to the video file
+} else if (result.status === 'failed') {
+  console.error('Video generation failed');
+} else {
+  console.log('Still processing...'); // 'pending' or 'running'
 }
 ```
 
-### Generate and Wait with Progress
+You're in full control: call `status()` from a button click, a cron job, a webhook handler, a `setInterval`, or anywhere else that fits your app.
 
-Track progress while waiting:
+### Optional: Built-in Polling
 
-```typescript
-const result = await client.video.generateAndWait(
-  {
-    model: 'jassie-vibe',
-    prompt: 'A butterfly landing on a flower in slow motion',
-    duration: 5,
-  },
-  {
-    interval: 5000,   // Check every 5 seconds
-    timeout: 300000,  // Give up after 5 minutes
-    onPoll: (res) => {
-      console.log(`Status: ${res.status}`);
-    },
-  },
-);
-```
-
-### Manual Control
-
-If you need full control over the process:
+If you'd rather have the SDK poll for you, pass options to `status()` and it will poll until the task reaches a terminal state (`succeeded` or `failed`):
 
 ```typescript
-// Step 1: Start the task
-const task = await client.video.generate({
-  model: 'jassie-motion',
-  prompt: 'Ocean waves at sunset',
-  duration: 10,
-});
-
-console.log('Task ID:', task.taskId); // Save this to check later
-
-// Step 2: Check status at any time
-const status = await client.video.status(task.taskId);
-console.log(status.status); // 'pending' | 'processing' | 'succeeded' | 'failed'
-
-// Step 3: Poll until done
-const result = await client.video.poll(task.taskId, {
-  interval: 5000,
-  timeout: 300000,
-  onPoll: (res) => console.log('Status:', res.status),
+const result = await client.video.status(task.taskId, {
+  interval: 5000,   // Check every 5 seconds (default: 5000)
+  timeout: 300000,  // Give up after 5 minutes (default: 600000)
+  onPoll: (res) => {
+    console.log(`Status: ${res.status}`); // Called on every poll iteration
+  },
 });
 
 console.log(result.videoUrl);
 ```
+
+> ⚠️ Polling blocks the calling code until the job finishes (or times out). If you're handling many concurrent jobs or running in a serverless environment, prefer the **single-check** pattern above and call `status()` on your own schedule.
 
 ### Video Parameters
 
@@ -537,9 +532,9 @@ console.log(result.videoUrl);
 **Camera Motion Options:**
 `'zoom_in'` | `'zoom_out'` | `'pan_left'` | `'pan_right'` | `'tilt_up'` | `'tilt_down'` | `'orbit'` | `'dolly_in'` | `'dolly_out'` | `'static'`
 
-### Poll Options
+### Status Polling Options
 
-Used with `poll()` and `generateAndWait()` — all parameters are optional:
+When you pass an options object to `status()`, it switches into polling mode. All fields are optional:
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -549,11 +544,13 @@ Used with `poll()` and `generateAndWait()` — all parameters are optional:
 
 ### Video Response
 
+Returned by both `generate()` and `status()`:
+
 | Field | Type | Description |
 |---|---|---|
 | `model` | `string` | Model used |
 | `taskId` | `string` | Unique task identifier |
-| `status` | `'pending' \| 'processing' \| 'succeeded' \| 'failed'` | Current task status |
+| `status` | `'pending' \| 'running' \| 'succeeded' \| 'failed'` | Current task status |
 | `videoUrl` | `string \| null` | URL to the generated video (available when `succeeded`) |
 | `expiresOn` | `string \| null` | When the video URL expires |
 
@@ -561,7 +558,7 @@ Used with `poll()` and `generateAndWait()` — all parameters are optional:
 
 ## Music Generation
 
-Generate original music tracks with lyrics and style tags. Music generation is **asynchronous**, just like video.
+Generate original music tracks with lyrics and style tags. Music generation is **asynchronous**, just like video — `generate()` returns a `taskId` immediately, then you call `status()` whenever you want.
 
 **Available models:**
 
@@ -569,73 +566,69 @@ Generate original music tracks with lyrics and style tags. Music generation is *
 |---|---|---|
 | `jassie-beat` | Text → Music | AI-powered music generation from tags and lyrics. Produces full multi-instrument tracks with genre/mood control, lyric-to-melody alignment, tempo/structure control, and stem-level output support. |
 
-### Generate and Wait (Recommended)
+### 1. Start the Job
+
+`generate()` returns immediately with a `taskId`. **It does not wait for the music to finish processing.**
 
 **With lyrics (vocal track):**
 
 ```typescript
-const result = await client.music.generateAndWait({
+const task = await client.music.generate({
   model: 'jassie-beat',
   tags: 'pop, upbeat, female vocals',
   lyrics: 'Calm and peaceful, floating through the night\nStars above are shining bright',
   duration: 30,
 });
 
-if (result.status === 'completed') {
-  console.log(result.musicUrl); // Direct URL to the audio file
-}
+console.log(task.taskId); // → save this somewhere
+console.log(task.status); // → 'pending'
 ```
 
 **Without lyrics (instrumental):**
 
 ```typescript
-const result = await client.music.generateAndWait({
+const task = await client.music.generate({
   model: 'jassie-beat',
   tags: 'lo-fi, chill, ambient, piano, instrumental',
   duration: 60,
 });
 ```
 
-### Generate and Wait with Progress
+### 2. Check Status
+
+Use `status(taskId)` to check whether the track is ready. By default it does a **single quick check**:
 
 ```typescript
-const result = await client.music.generateAndWait(
-  {
-    model: 'jassie-beat',
-    tags: 'electronic, upbeat, dance',
-    duration: 30,
-  },
-  {
-    interval: 5000,
-    timeout: 300000,
-    onPoll: (res) => {
-      console.log(`Status: ${res.status}`);
-    },
-  },
-);
+const result = await client.music.status(task.taskId);
+
+if (result.status === 'completed') {
+  console.log(result.musicUrl); // Direct URL to the audio file
+} else if (result.status === 'failed') {
+  console.error('Music generation failed');
+} else {
+  console.log('Still processing...'); // 'pending' or 'processing'
+}
 ```
 
-### Manual Control
+You can call `status()` anywhere — a button click, a cron job, a webhook, your own `setInterval`. The SDK does not impose a polling loop on you.
+
+### Optional: Built-in Polling
+
+If you want the SDK to poll for you, pass options to `status()` and it will keep checking until the task reaches a terminal state (`completed` or `failed`):
 
 ```typescript
-// Step 1: Start the task
-const task = await client.music.generate({
-  model: 'jassie-beat',
-  tags: 'electronic, upbeat, dance',
-  lyrics: 'Feel the rhythm, feel the beat\nMoving to the sound beneath our feet',
-  duration: 60,
+const result = await client.music.status(task.taskId, {
+  interval: 5000,   // Check every 5 seconds (default: 5000)
+  timeout: 300000,  // Give up after 5 minutes (default: 600000)
+  onPoll: (res) => {
+    console.log(`Status: ${res.status}`); // Called on every poll iteration
+  },
 });
 
-console.log('Task ID:', task.taskId);
-
-// Step 2: Check status
-const status = await client.music.status(task.taskId);
-console.log(status.status); // 'pending' | 'processing' | 'completed' | 'failed'
-
-// Step 3: Poll until done
-const result = await client.music.poll(task.taskId);
 console.log(result.musicUrl);
 ```
+
+> ⚠️ Polling blocks the calling code until the job finishes (or times out). For long jobs or serverless environments, prefer the **single-check** pattern above.
 
 ### Music Parameters
 
@@ -654,9 +647,11 @@ console.log(result.musicUrl);
 - **Tempo:** `slow`, `medium`, `fast`, `120bpm`
 - **Vocals:** `male vocals`, `female vocals`, `choir`, `instrumental`
 
-> **Note:** Poll options are the same as [Video Poll Options](#poll-options).
+> **Note:** Polling options for `status()` are the same as [Video Status Polling Options](#status-polling-options).
 
 ### Music Response
+
+Returned by both `generate()` and `status()`:
 
 | Field | Type | Description |
 |---|---|---|
@@ -685,7 +680,7 @@ Each chunk has a `type` field:
 ### Reading a Stream
 
 ```typescript
-const stream = client.text.create({
+const stream = client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Hello' }],
   stream: true,
@@ -711,7 +706,7 @@ for await (const chunk of stream) {
 Skip the loop and get the final result directly:
 
 ```typescript
-const text = await client.text.create({
+const text = await client.text.generate({
   model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Hello' }],
   stream: true,
@@ -723,7 +718,7 @@ const text = await client.text.create({
 Cancel a stream mid-generation:
 
 ```typescript
-const stream = client.text.create({
+const stream = client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Write a long essay...' }],
   stream: true,
@@ -772,7 +767,7 @@ import JassieAI, {
 const client = new JassieAI({ apiKey: 'your-api-key' });
 
 try {
-  const response = await client.text.create({
+  const response = await client.text.generate({
     model: 'jassie-pulse',
     messages: [{ role: 'user', content: 'Hello' }],
   });
@@ -859,7 +854,7 @@ import JassieAI from 'jassie-ai';
 
 const client = new JassieAI({ apiKey: 'your-api-key' });
 
-const stream = client.text.create({
+const stream = client.text.generate({
   model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Hello from React Native!' }],
   stream: true,

@@ -12,7 +12,7 @@ import { startFetchTransport } from './streaming/transport-fetch.js';
 import { startXHRTransport } from './streaming/transport-xhr.js';
 import { Text } from './resources/text.js';
 import { Code } from './resources/code.js';
-import { Images } from './resources/images.js';
+import { Image } from './resources/image.js';
 import { Video } from './resources/video.js';
 import { Music } from './resources/music.js';
 
@@ -29,7 +29,7 @@ export class JassieAI {
 
   readonly text: Text;
   readonly code: Code;
-  readonly images: Images;
+  readonly image: Image;
   readonly video: Video;
   readonly music: Music;
 
@@ -45,7 +45,7 @@ export class JassieAI {
 
     this.text = new Text(this);
     this.code = new Code(this);
-    this.images = new Images(this);
+    this.image = new Image(this);
     this.video = new Video(this);
     this.music = new Music(this);
   }

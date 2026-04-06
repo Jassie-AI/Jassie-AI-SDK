@@ -16,7 +16,7 @@ export class Music {
     this.client = client;
   }
 
-  /** Start music generation (async task) */
+  /** Start music generation. Returns immediately with a taskId. */
   async generate(params: MusicGenerateParams): Promise<MusicTaskResponse> {
     return this.client._request<MusicTaskResponse>(
       'POST',
@@ -25,35 +25,35 @@ export class Music {
     );
   }
 
-  /** Check status of a music task */
-  async status(taskId: string): Promise<MusicTaskResponse> {
-    return this.client._request<MusicTaskResponse>(
-      'GET',
-      `/v1/generate-music/${taskId}`,
-    );
-  }
-
-  /** Poll until the music task reaches a terminal status */
-  async poll(
+  /**
+   * Check music task status.
+   *
+   * - `status(taskId)` → single status check (one HTTP call).
+   * - `status(taskId, { onPoll, interval, timeout })` → polls until the task
+   *   reaches a terminal state (`completed` or `failed`), invoking `onPoll`
+   *   on every poll iteration.
+   */
+  async status(
     taskId: string,
     options?: PollOptions,
   ): Promise<MusicTaskResponse> {
+    const fetcher = () =>
+      this.client._request<MusicTaskResponse>(
+        'GET',
+        `/v1/generate-music/${taskId}`,
+      );
+
+    if (!options) {
+      return fetcher();
+    }
+
     return poll<MusicTaskResponse>({
-      fetcher: () => this.status(taskId),
+      fetcher,
       isComplete: (res) =>
         res.status === 'completed' || res.status === 'failed',
-      interval: options?.interval,
-      timeout: options?.timeout,
-      onPoll: options?.onPoll,
+      interval: options.interval,
+      timeout: options.timeout,
+      onPoll: options.onPoll,
     });
-  }
-
-  /** Generate music and wait for completion */
-  async generateAndWait(
-    params: MusicGenerateParams,
-    options?: PollOptions,
-  ): Promise<MusicTaskResponse> {
-    const task = await this.generate(params);
-    return this.poll(task.taskId, options);
   }
 }
