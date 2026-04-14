@@ -67,14 +67,22 @@ export class JassieStream implements AsyncIterable<JassieChunk> {
     this._end();
   }
 
+  /** Iterate text chunks via callback. Resolves when the stream ends. */
+  async eachText(cb: (text: string) => void): Promise<void> {
+    const iterator = this[Symbol.asyncIterator]();
+    let result = await iterator.next();
+    while (!result.done) {
+      if (result.value.type === 'text' && result.value.content) {
+        cb(result.value.content);
+      }
+      result = await iterator.next();
+    }
+  }
+
   /** Collect all text chunks into a single string */
   async finalText(): Promise<string> {
     let text = '';
-    for await (const chunk of this) {
-      if (chunk.type === 'text') {
-        text += chunk.content;
-      }
-    }
+    await this.eachText((t) => { text += t; });
     return text;
   }
 
@@ -87,12 +95,28 @@ export class JassieStream implements AsyncIterable<JassieChunk> {
     });
   }
 
-  async *[Symbol.asyncIterator](): AsyncIterator<JassieChunk> {
-    while (true) {
-      const item = await this.next();
-      if (item.error) throw item.error;
-      if (item.done) return;
-      yield item.value!;
-    }
+  // Plain async iterator — no async generator syntax, which Hermes
+  // (React Native's JS engine) does not support.
+  [Symbol.asyncIterator](): AsyncIterator<JassieChunk> {
+    const self = this;
+    return {
+      next(): Promise<IteratorResult<JassieChunk>> {
+        return self.next().then((item) => {
+          if (item.error) {
+            throw item.error;
+          }
+          if (item.done) {
+            return { value: undefined as unknown as JassieChunk, done: true as const };
+          }
+          return { value: item.value!, done: false as const };
+        });
+      },
+    };
+  }
+
+  // Babel/Metro fallback — Babel's _asyncIterator helper checks this
+  // string key when Symbol.asyncIterator is not found on the object.
+  ['@@asyncIterator'](): AsyncIterator<JassieChunk> {
+    return this[Symbol.asyncIterator]();
   }
 }

@@ -133,7 +133,12 @@ export class JassieAI {
     const transportOptions: StreamTransportOptions = {
       url: `${this.baseURL}${path}`,
       method,
-      headers: this.buildHeaders(),
+      headers: {
+        ...this.buildHeaders(),
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+      },
       body: JSON.stringify(body),
       signal: stream.signal,
     };

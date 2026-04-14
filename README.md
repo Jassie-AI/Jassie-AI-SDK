@@ -28,6 +28,7 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [Platform Support](#platform-support)
+  - [React Native](#react-native)
 - [TypeScript Types](#typescript-types)
 - [Rate Limits](#rate-limits)
 - [About](#about)
@@ -701,6 +702,24 @@ for await (const chunk of stream) {
 }
 ```
 
+### Callback-Based Streaming
+
+Use `eachText()` for a simpler callback-based approach — no loops or iterators needed:
+
+```typescript
+const stream = client.text.generate({
+  model: 'jassie-pulse',
+  messages: [{ role: 'user', content: 'Write a short poem.' }],
+  stream: true,
+});
+
+await stream.eachText((text) => {
+  process.stdout.write(text);
+});
+```
+
+`eachText()` calls your callback for each text chunk and resolves when the stream ends. This is the recommended approach for React and React Native apps.
+
 ### Collecting Full Text
 
 Skip the loop and get the final result directly:
@@ -724,15 +743,30 @@ const stream = client.text.generate({
   stream: true,
 });
 
+// With for-await
 for await (const chunk of stream) {
   process.stdout.write(chunk.content);
-
   if (someCondition) {
-    stream.abort(); // Stops the stream immediately
+    stream.abort();
     break;
   }
 }
+
+// Or with eachText — abort from outside
+setTimeout(() => stream.abort(), 5000); // abort after 5s
+
+await stream.eachText((text) => {
+  process.stdout.write(text);
+});
 ```
+
+### Stream Methods
+
+| Method | Returns | Description |
+|---|---|---|
+| `eachText(cb)` | `Promise<void>` | Calls `cb(text)` for each text chunk. Resolves when stream ends. |
+| `finalText()` | `Promise<string>` | Collects all text chunks into a single string. |
+| `abort()` | `void` | Cancels the stream immediately. |
 
 ### Chunk Fields
 
@@ -847,7 +881,11 @@ This SDK works everywhere JavaScript runs. The platform is auto-detected — no 
 
 ### React Native
 
-Streaming works out of the box in React Native using `XMLHttpRequest` under the hood:
+Streaming works out of the box in React Native. The SDK auto-detects the React Native environment and uses `XMLHttpRequest` with incremental polling for reliable SSE delivery.
+
+#### Hermes Compatibility
+
+React Native uses the Hermes JS engine, which does not support `for await...of` with async iterators. Use `eachText()` instead:
 
 ```typescript
 import JassieAI from 'jassie-ai';
@@ -855,19 +893,48 @@ import JassieAI from 'jassie-ai';
 const client = new JassieAI({ apiKey: 'your-api-key' });
 
 const stream = client.text.generate({
-  model: 'jassie-bolt',
+  model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Hello from React Native!' }],
   stream: true,
 });
 
-let text = '';
-for await (const chunk of stream) {
-  if (chunk.type === 'text') {
-    text += chunk.content;
-    setText(text); // Update React state
-  }
-}
+// Stream tokens into React state
+await stream.eachText((text) => {
+  setResponse((prev) => prev + text);
+});
 ```
+
+#### Aborting in React Native
+
+Hold a reference to the stream and call `abort()`:
+
+```typescript
+const streamRef = useRef<{ abort: () => void } | null>(null);
+
+const send = async (prompt: string) => {
+  const stream = client.text.generate({
+    model: 'jassie-pulse',
+    messages: [{ role: 'user', content: prompt }],
+    stream: true,
+  });
+
+  streamRef.current = stream;
+
+  await stream.eachText((text) => {
+    setResponse((prev) => prev + text);
+  });
+
+  streamRef.current = null;
+};
+
+const stop = () => {
+  streamRef.current?.abort();
+};
+```
+
+#### Why not `for await`?
+
+Hermes (React Native's JS engine) does not support async generator syntax. Metro's Babel transform converts `for await...of` into a helper that may not resolve `Symbol.asyncIterator` correctly on pre-compiled packages. `eachText()` avoids this entirely — it works the same on all platforms.
 
 ---
 
