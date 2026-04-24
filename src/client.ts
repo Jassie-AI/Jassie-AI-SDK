@@ -15,6 +15,7 @@ import { Code } from './resources/code.js';
 import { Image } from './resources/image.js';
 import { Video } from './resources/video.js';
 import { Music } from './resources/music.js';
+import { Voice } from './resources/voice.js';
 
 const DEFAULT_BASE_URL = 'https://api.jassie.ai';
 const DEFAULT_TIMEOUT = 60000;
@@ -32,6 +33,7 @@ export class JassieAI {
   readonly image: Image;
   readonly video: Video;
   readonly music: Music;
+  readonly voice: Voice;
 
   constructor(options: JassieAIOptions) {
     if (!options.apiKey) {
@@ -48,6 +50,7 @@ export class JassieAI {
     this.image = new Image(this);
     this.video = new Video(this);
     this.music = new Music(this);
+    this.voice = new Voice(this);
   }
 
   private buildHeaders(): Record<string, string> {
@@ -119,6 +122,98 @@ export class JassieAI {
           continue;
         }
 
+        lastError = new JassieConnectionError(err?.message ?? 'Request failed');
+        continue;
+      }
+    }
+
+    throw lastError ?? new JassieConnectionError('Request failed');
+  }
+
+  /** Multipart form-data request with retry logic — returns parsed JSON */
+  async _requestMultipart<T>(path: string, formData: FormData): Promise<T> {
+    const url = `${this.baseURL}${path}`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await this.backoff(attempt, lastError);
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeout);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${this.apiKey}` },
+          body: formData,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          let errorBody: any;
+          try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+          const err = JassieAPIError.fromResponse(response.status, errorBody);
+          if (response.status !== 429 && response.status < 500) throw err;
+          lastError = err;
+          continue;
+        }
+
+        return (await response.json()) as T;
+      } catch (err: any) {
+        clearTimeout(timer);
+        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) throw err;
+        if (err?.name === 'AbortError') { lastError = new JassieTimeoutError(); continue; }
+        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) { lastError = err; continue; }
+        lastError = new JassieConnectionError(err?.message ?? 'Request failed');
+        continue;
+      }
+    }
+
+    throw lastError ?? new JassieConnectionError('Request failed');
+  }
+
+  /** Multipart form-data request with retry logic — returns raw Response (for binary data) */
+  async _requestMultipartRaw(path: string, formData: FormData): Promise<Response> {
+    const url = `${this.baseURL}${path}`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await this.backoff(attempt, lastError);
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeout);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${this.apiKey}` },
+          body: formData,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          let errorBody: any;
+          try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+          const err = JassieAPIError.fromResponse(response.status, errorBody);
+          if (response.status !== 429 && response.status < 500) throw err;
+          lastError = err;
+          continue;
+        }
+
+        return response;
+      } catch (err: any) {
+        clearTimeout(timer);
+        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) throw err;
+        if (err?.name === 'AbortError') { lastError = new JassieTimeoutError(); continue; }
+        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) { lastError = err; continue; }
         lastError = new JassieConnectionError(err?.message ?? 'Request failed');
         continue;
       }

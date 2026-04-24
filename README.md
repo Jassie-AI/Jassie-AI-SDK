@@ -6,7 +6,7 @@
 
 Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API — built by [Airbin](https://airbin.app).
 
-Generate text, code, images, videos, and music — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
+Generate text, code, images, videos, music, and speech — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
 
 - Zero runtime dependencies
 - Full TypeScript support with strict types
@@ -25,6 +25,7 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 - [Image Generation](#image-generation)
 - [Video Generation](#video-generation)
 - [Music Generation](#music-generation)
+- [Voice (TTS & STT)](#voice-tts--stt)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [Platform Support](#platform-support)
@@ -162,6 +163,26 @@ console.log(task.taskId);
 // 2. Check status whenever you want
 const result = await client.music.status(task.taskId);
 console.log(result.status, result.musicUrl);
+```
+
+### Voice (TTS & STT)
+
+```typescript
+// Text to Speech — returns audio as ArrayBuffer
+const audio = await client.voice.tts({
+  model: 'jassie-voice',           // ✅ Required
+  text: 'Hello, how are you?',     // ✅ Required: Text to speak (max 5000 chars)
+  voiceId: 'brian',                 // ⚪ Optional: Pre-saved voice or preset name
+  sampleVoice: myAudioBlob,        // ⚪ Optional: Voice sample for zero-shot cloning (max 5MB)
+  output_format: 'mp3',            // ⚪ Optional: 'mp3' | 'wav' | 'pcm' | 'opus'
+});
+
+// Speech to Text — returns transcribed text string
+const text = await client.voice.stt({
+  model: 'jassie-voice',           // ✅ Required
+  file: audioBlob,                 // ✅ Required: Audio file (max 25MB)
+  language: 'en',                  // ⚪ Optional: Language code (auto-detected if omitted)
+});
 ```
 
 ---
@@ -664,6 +685,118 @@ Returned by both `generate()` and `status()`:
 
 ---
 
+## Voice (TTS & STT)
+
+Convert text to speech and speech to text using Jassie Voice. Powered by a self-hosted GPU server with automatic ElevenLabs fallback when the server is at capacity.
+
+**Available models:**
+
+| Model | Type | Description |
+|---|---|---|
+| `jassie-voice` | Text ↔ Speech | Self-hosted TTS (Voxtral) and STT (Whisper). Supports zero-shot voice cloning from an audio sample. **Rate Limits:** 60 RPM |
+
+### Text to Speech (TTS)
+
+Generate speech audio from text. Returns an `ArrayBuffer` of audio data.
+
+```typescript
+const audio = await client.voice.tts({
+  model: 'jassie-voice',
+  text: 'Hello, how are you?',
+});
+
+// Save to file (Node.js)
+import fs from 'fs';
+fs.writeFileSync('hello.mp3', Buffer.from(audio));
+```
+
+### With a Pre-Saved Voice
+
+```typescript
+const audio = await client.voice.tts({
+  model: 'jassie-voice',
+  text: 'Good morning!',
+  voiceId: 'brian',
+});
+```
+
+### With a Sample Voice (Zero-Shot Cloning)
+
+Pass an audio sample (2-30 seconds, max 5MB) and the model will clone the voice:
+
+```typescript
+// Browser — from a file input
+const file = fileInput.files[0];
+const audio = await client.voice.tts({
+  model: 'jassie-voice',
+  text: 'This will sound like the sample voice.',
+  sampleVoice: file,
+});
+
+// Node.js — from a file on disk
+import fs from 'fs';
+const sample = new Blob([fs.readFileSync('my_voice.wav')], { type: 'audio/wav' });
+const audio = await client.voice.tts({
+  model: 'jassie-voice',
+  text: 'This will sound like the sample voice.',
+  sampleVoice: sample,
+});
+```
+
+### TTS Parameters
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `model` | `'jassie-voice'` | **Yes** | — | Model to use |
+| `text` | `string` | **Yes** | — | Text to speak (max 5000 characters) |
+| `voiceId` | `string` | No | — | Pre-saved voice ID or a Voxtral preset name |
+| `sampleVoice` | `Blob \| File` | No | — | Audio sample for zero-shot voice cloning (2-30s, max 5MB). When provided, `voiceId` is ignored |
+| `output_format` | `'mp3' \| 'wav' \| 'pcm' \| 'opus'` | No | `'mp3'` | Audio output format |
+
+### TTS Response
+
+Returns `Promise<ArrayBuffer>` — raw audio bytes in the requested format.
+
+### Speech to Text (STT)
+
+Transcribe audio to text. Returns the transcribed text as a `string`.
+
+```typescript
+// Browser — from a recorded blob
+const text = await client.voice.stt({
+  model: 'jassie-voice',
+  file: recordedBlob,
+});
+
+console.log(text); // → "Hello, how are you?"
+```
+
+```typescript
+// Node.js — from a file on disk
+import fs from 'fs';
+const audioFile = new Blob([fs.readFileSync('recording.webm')], { type: 'audio/webm' });
+
+const text = await client.voice.stt({
+  model: 'jassie-voice',
+  file: audioFile,
+  language: 'en',
+});
+```
+
+### STT Parameters
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `model` | `'jassie-voice'` | **Yes** | — | Model to use |
+| `file` | `Blob \| File` | **Yes** | — | Audio file to transcribe (webm, mp3, wav, ogg, etc.), max 25MB |
+| `language` | `string` | No | Auto-detect | Language code (e.g. `'en'`, `'es'`, `'fr'`) |
+
+### STT Response
+
+Returns `Promise<string>` — the transcribed text.
+
+---
+
 ## Streaming
 
 Text and code generation support real-time streaming via Server-Sent Events (SSE). Streams implement `AsyncIterable`, so you can use `for await...of`.
@@ -955,6 +1088,7 @@ import type {
   ImageModel,
   VideoModel,
   MusicModel,
+  VoiceModel,
 
   // Request params
   TextGenerateParams,
@@ -964,12 +1098,15 @@ import type {
   ImageGenerateParams,
   VideoGenerateParams,
   MusicGenerateParams,
+  VoiceTTSParams,
+  VoiceSTTParams,
 
   // Responses
   TextResponse,
   ImageResponse,
   VideoTaskResponse,
   MusicTaskResponse,
+  VoiceSTTResponse,
 
   // Streaming
   JassieChunk,
@@ -992,6 +1129,7 @@ import type {
 | `jassie-vibe` | — | 30 |
 | `jassie-motion` | — | 30 |
 | `jassie-beat` | — | 30 |
+| `jassie-voice` | — | 60 |
 
 > Rate limits may vary based on your plan. Check your dashboard at [jassie.ai](https://jassie.ai) for your current limits.
 

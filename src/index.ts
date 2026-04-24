@@ -13,6 +13,7 @@ export type {
   ImageModel,
   VideoModel,
   MusicModel,
+  VoiceModel,
   Usage,
   JassieChunk,
   TextGenerateParams,
@@ -22,10 +23,13 @@ export type {
   ImageGenerateParams,
   VideoGenerateParams,
   MusicGenerateParams,
+  VoiceTTSParams,
+  VoiceSTTParams,
   TextResponse,
   ImageResponse,
   VideoTaskResponse,
   MusicTaskResponse,
+  VoiceSTTResponse,
   PollOptions,
 } from './types.js';
 

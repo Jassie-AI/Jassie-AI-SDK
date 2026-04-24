@@ -26,6 +26,7 @@ export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x';
 export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema-4k';
 export type MusicModel = 'jassie-beat';
+export type VoiceModel = 'jassie-voice';
 
 // ── Usage ────────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,20 @@ export interface MusicGenerateParams {
   duration: number;
 }
 
+export interface VoiceTTSParams {
+  model: VoiceModel;
+  text: string;
+  voiceId?: string;
+  sampleVoice?: Blob | File;
+  output_format?: 'mp3' | 'wav' | 'pcm' | 'opus';
+}
+
+export interface VoiceSTTParams {
+  model: VoiceModel;
+  file: Blob | File;
+  language?: string;
+}
+
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
@@ -150,6 +165,10 @@ export interface MusicTaskResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   musicUrl: string | null;
   expiresOn: string | null;
+}
+
+export interface VoiceSTTResponse {
+  text: string;
 }
 
 // ── Polling Options ──────────────────────────────────────────────────────────
