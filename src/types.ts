@@ -39,7 +39,7 @@ export interface Usage {
 // ── Streaming Chunk ──────────────────────────────────────────────────────────
 
 export interface JassieChunk {
-  type: 'queued' | 'text' | 'error';
+  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error';
   content: string;
   done: boolean;
   index?: number;
@@ -47,6 +47,7 @@ export interface JassieChunk {
   position?: number;
   request_id?: string;
   duration_seconds?: number;
+  query?: string;
   usage?: Usage;
 }
 
@@ -58,7 +59,7 @@ export interface TextGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always';
+  web?: 'auto' | 'always' | null;
 }
 
 export interface TextStreamParams {
@@ -67,7 +68,7 @@ export interface TextStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always';
+  web?: 'auto' | 'always' | null;
 }
 
 export interface CodeGenerateParams {
@@ -76,7 +77,7 @@ export interface CodeGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always';
+  web?: 'auto' | 'always' | null;
 }
 
 export interface CodeStreamParams {
@@ -85,31 +86,26 @@ export interface CodeStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always';
+  web?: 'auto' | 'always' | null;
 }
 
 export interface ImageGenerateParams {
   model: ImageModel;
   prompt: string;
-  reference?: string;
-  first_image?: string;
-  last_image?: string;
-  seed?: number;
-  guidance_scale?: number;
-  num_inference_steps?: number;
-  width?: number;
-  height?: number;
-  negative_prompt?: string;
+  image?: string | string[];
+  aspectRatio?: string;
+  n?: number;
 }
 
 export interface VideoGenerateParams {
   model: VideoModel;
   prompt: string;
-  duration: number;
-  image?: string;
-  seed?: number;
-  camera_motion?: string;
-  negative_prompt?: string;
+  duration?: number;
+  reference?: string | string[];
+  firstFrame?: string;
+  lastFrame?: string;
+  watermark?: boolean;
+  aspectRatio?: string;
 }
 
 export interface MusicGenerateParams {
@@ -131,18 +127,15 @@ export interface VoiceTTSParams {
 export interface VoiceSTTParams {
   model: VoiceModel;
   file: Blob | File;
-  language?: string;
 }
 
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
   content: string;
-  request_id?: string;
-  chunks?: number;
-  duration_seconds?: number;
-  index?: number;
-  usage?: Usage;
+  web_search?: {
+    query: string;
+  };
 }
 
 export interface ImageResponse {

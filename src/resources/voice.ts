@@ -30,7 +30,6 @@ export class Voice {
     const formData = new FormData();
     formData.append('model', params.model);
     formData.append('file', params.file, (params.file as File).name || 'audio.webm');
-    if (params.language) formData.append('language', params.language);
 
     const result = await this.client._requestMultipart<VoiceSTTResponse>('/v1/speech-to-text', formData);
     return result.text;
