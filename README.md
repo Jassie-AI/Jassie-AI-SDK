@@ -204,7 +204,7 @@ for await (const event of stream) {
 |---|---|
 | `jassie-vibe` | 720p HD video generation |
 | `jassie-motion` | 1080p Full-HD video generation |
-| `jassie-cinema` | 4K cinematic long-form generation *(coming soon)* |
+| `jassie-cinema` | 2K cinematic video generation |
 
 Video generation is **asynchronous** — `generate()` returns a `taskId` immediately.
 
@@ -224,9 +224,9 @@ if (result.status === 'succeeded') console.log(result.videoUrl);
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
+| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p, `cinema` = 2K) |
 | `prompt` | `string` | **Yes** | — | Video description |
-| `duration` | `number` | No | `5` | Duration in seconds |
+| `duration` | `number` | No | `5` | Duration in seconds (4–15 for `cinema`) |
 | `reference` | `string \| string[]` | No | — | Reference image(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
 | `firstFrame` | `string` | No | — | Starting frame image URL |
 | `lastFrame` | `string` | No | — | Ending frame image URL |
@@ -304,7 +304,7 @@ if (result.status === 'completed') console.log(result.musicUrl);
 
 | Model | Description |
 |---|---|
-| `jassie-voice` | TTS (Voxtral) and STT (Whisper). Supports zero-shot voice cloning. |
+| `jassie-voice` | Text-to-speech and speech-to-text. Supports zero-shot voice cloning. |
 
 ### Text to Speech
 
