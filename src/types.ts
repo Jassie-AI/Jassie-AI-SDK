@@ -24,7 +24,7 @@ export interface Message {
 export type TextModel = 'jassie-pulse' | 'jassie-bolt';
 export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x';
-export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema-4k';
+export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema';
 export type MusicModel = 'jassie-beat';
 export type VoiceModel = 'jassie-voice';
 
@@ -138,14 +138,8 @@ export interface TextResponse {
   };
 }
 
-export interface ImageResponse {
-  images: string[];
-  created: number;
-  usage: number;
-}
-
 export interface ImageTaskResponse {
-  type: 'status' | 'completed' | 'failed';
+  type?: 'status' | 'completed' | 'failed';
   model: string;
   taskId: string;
   status: 'pending' | 'preview_ready' | 'succeeded' | 'failed';

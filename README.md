@@ -204,7 +204,7 @@ for await (const event of stream) {
 |---|---|
 | `jassie-vibe` | 720p HD video generation |
 | `jassie-motion` | 1080p Full-HD video generation |
-| `jassie-cinema-4k` | 4K cinematic long-form generation *(coming soon)* |
+| `jassie-cinema` | 4K cinematic long-form generation *(coming soon)* |
 
 Video generation is **asynchronous** — `generate()` returns a `taskId` immediately.
 
@@ -224,7 +224,7 @@ if (result.status === 'succeeded') console.log(result.videoUrl);
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema-4k'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
+| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
 | `prompt` | `string` | **Yes** | — | Video description |
 | `duration` | `number` | No | `5` | Duration in seconds |
 | `reference` | `string \| string[]` | No | — | Reference image(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
@@ -261,7 +261,7 @@ Pass to `status()` to auto-poll until terminal state:
 
 | Model | Description |
 |---|---|
-| `jassie-beat` | AI music generation from tags and lyrics |
+| `jassie-beat` | AI music generation — vocal or instrumental |
 
 Music generation is **asynchronous** — same pattern as video.
 

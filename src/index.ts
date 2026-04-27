@@ -26,7 +26,6 @@ export type {
   VoiceTTSParams,
   VoiceSTTParams,
   TextResponse,
-  ImageResponse,
   ImageTaskResponse,
   VideoTaskResponse,
   MusicTaskResponse,
