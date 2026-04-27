@@ -27,10 +27,16 @@ export type {
   VoiceSTTParams,
   TextResponse,
   ImageResponse,
+  ImageTaskResponse,
   VideoTaskResponse,
   MusicTaskResponse,
   VoiceSTTResponse,
   PollOptions,
+  ImageStreamStatus,
+  ImageStreamPreview,
+  ImageStreamCompleted,
+  ImageStreamFailed,
+  ImageStreamEvent,
 } from './types.js';
 
 // Errors
@@ -45,3 +51,4 @@ export {
 
 // Streaming
 export { JassieStream } from './streaming/stream.js';
+export { ImageStream } from './streaming/image-stream.js';

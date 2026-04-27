@@ -105,8 +105,11 @@ client.code.generate({
 
 ### Image Generation
 
+Image generation is **asynchronous** — `generate()` returns a `taskId` immediately, then you check `status()` whenever you want.
+
 ```typescript
-client.image.generate({
+// 1. Start the job — returns immediately
+const task = await client.image.generate({
   model: 'jassie-pixel',        // ✅ Required: 'jassie-pixel' | 'jassie-pixel-x'
   prompt: 'A sunset...',        // ✅ Required: Image description
   reference: 'https://...',     // ⚪ Optional: Reference image URL
@@ -119,6 +122,12 @@ client.image.generate({
   negative_prompt: 'blurry',    // ⚪ Optional: What to avoid
   seed: 42,                     // ⚪ Optional: Reproducibility seed
 });
+
+console.log(task.taskId); // → save this to check later
+
+// 2. Check status whenever you want — single quick check
+const result = await client.image.status(task.taskId);
+console.log(result.status, result.imageUrl);
 ```
 
 ### Video Generation
@@ -390,7 +399,7 @@ for await (const chunk of stream) {
 
 ## Image Generation
 
-Generate images from text prompts.
+Generate images from text prompts. Image generation is **asynchronous**: `generate()` returns a `taskId` immediately, then you check the result with `status()` whenever you want.
 
 **Available models:**
 
@@ -399,21 +408,124 @@ Generate images from text prompts.
 | `jassie-pixel` | Multi-Modal → Image | Photorealistic 2K image generation. Supports reference images, first/last frame conditioning, and fine-grained style control. |
 | `jassie-pixel-x` | Multi-Modal → Image | 4K ultra-high-resolution image generation. Same powerful conditioning options as Pixel, at twice the resolution — print-ready and production-ready. |
 
-### Basic Generation
+### 1. Start the Job
+
+`generate()` returns immediately with a `taskId`. **It does not wait for the image to finish processing.**
 
 ```typescript
-const response = await client.image.generate({
+const task = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'A sunset over mountains, digital art style',
 });
 
-console.log(response.images[0]); // Image URL
+console.log(task.taskId); // → save this somewhere (DB, queue, frontend state)
+console.log(task.status); // → 'pending'
 ```
+
+### 2. Check Status
+
+Use `status(taskId)` to check whether the image is ready. By default it does a **single quick check**:
+
+```typescript
+const result = await client.image.status(task.taskId);
+
+if (result.status === 'succeeded') {
+  console.log(result.imageUrl); // Direct URL to the image file
+} else if (result.status === 'failed') {
+  console.error('Image generation failed');
+} else {
+  console.log('Still processing...'); // 'pending'
+}
+```
+
+You're in full control: call `status()` from a button click, a cron job, a webhook handler, a `setInterval`, or anywhere else that fits your app.
+
+### Optional: Built-in Polling
+
+If you'd rather have the SDK poll for you, pass options to `status()` and it will poll until the task reaches a terminal state (`succeeded` or `failed`):
+
+```typescript
+const result = await client.image.status(task.taskId, {
+  interval: 3000,   // Check every 3 seconds (default: 5000)
+  timeout: 120000,  // Give up after 2 minutes (default: 600000)
+  onPoll: (res) => {
+    console.log(`Status: ${res.status}`); // Called on every poll iteration
+  },
+});
+
+console.log(result.imageUrl);
+```
+
+> Images typically generate in 10–30 seconds. For serverless environments, prefer the **single-check** pattern above and call `status()` on your own schedule.
+
+### Optional: Real-Time Streaming
+
+Use `statusStream()` to receive live progress events via Server-Sent Events (SSE). Returns an `ImageStream` (async iterable) that yields events as the image progresses through generation:
+
+```typescript
+const stream = client.image.statusStream(task.taskId);
+
+for await (const event of stream) {
+  switch (event.type) {
+    case 'status':
+      console.log('Status:', event.status); // 'pending' → 'preview_ready'
+      break;
+    case 'preview':
+      console.log('Preview ready:', event.imageUrl); // base64 data URI
+      break;
+    case 'completed':
+      console.log('Done:', event.imageUrl); // final hosted URL
+      break;
+    case 'failed':
+      console.error('Failed:', event.error);
+      break;
+  }
+}
+```
+
+Or use the callback-based approach (recommended for React Native / Hermes):
+
+```typescript
+const stream = client.image.statusStream(task.taskId);
+
+await stream.eachEvent((event) => {
+  if (event.type === 'preview') {
+    setPreviewUrl(event.imageUrl); // base64 data URI for instant display
+  }
+  if (event.type === 'completed') {
+    setFinalUrl(event.imageUrl); // permanent hosted URL
+  }
+});
+```
+
+Or skip the loop and get the final result directly:
+
+```typescript
+const result = await client.image.statusStream(task.taskId).finalResult();
+console.log(result?.imageUrl);
+```
+
+#### Stream Event Types
+
+| Event Type | Fields | Description |
+|---|---|---|
+| `status` | `model`, `taskId`, `status` | Fired when task status changes (`pending` → `preview_ready`) |
+| `preview` | `model`, `taskId`, `imageUrl` | Base64 data URI of the generated image (available before final upload) |
+| `completed` | `model`, `taskId`, `status`, `imageUrl`, `expiresOn` | Final hosted image URL |
+| `failed` | `model`, `taskId`, `status`, `error` | Generation failed |
+
+#### ImageStream Methods
+
+| Method | Returns | Description |
+|---|---|---|
+| `eachEvent(cb)` | `Promise<void>` | Calls `cb(event)` for each event. Resolves when stream ends. |
+| `finalResult()` | `Promise<ImageStreamEvent \| null>` | Collects events and returns the `completed` event (or `null`). |
+| `abort()` | `void` | Cancels the stream immediately. |
 
 ### With Advanced Options
 
 ```typescript
-const response = await client.image.generate({
+const task = await client.image.generate({
   model: 'jassie-pixel-x',
   prompt: 'A futuristic cityscape at night with neon lights',
   width: 768,
@@ -430,7 +542,7 @@ const response = await client.image.generate({
 Use an existing image as a style or content reference:
 
 ```typescript
-const response = await client.image.generate({
+const task = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'This scene painted in watercolor style',
   reference: 'https://example.com/reference-photo.jpg',
@@ -442,7 +554,7 @@ const response = await client.image.generate({
 Blend between two images:
 
 ```typescript
-const response = await client.image.generate({
+const task = await client.image.generate({
   model: 'jassie-pixel',
   prompt: 'A smooth transition between these two scenes',
   first_image: 'https://example.com/start.jpg',
@@ -466,13 +578,19 @@ const response = await client.image.generate({
 | `negative_prompt` | `string` | No | — | What to avoid in the generated image |
 | `seed` | `number` | No | Random | Seed for reproducible results |
 
+> Polling options for `status()` are the same as [Video Status Polling Options](#status-polling-options).
+
 ### Image Response
+
+Returned by both `generate()` and `status()`:
 
 | Field | Type | Description |
 |---|---|---|
-| `images` | `string[]` | Array of generated image URLs |
-| `created` | `number` | Unix timestamp (seconds) of creation |
-| `usage` | `number` | Usage metric |
+| `model` | `string` | Model used |
+| `taskId` | `string` | Unique task identifier |
+| `status` | `'pending' \| 'preview_ready' \| 'succeeded' \| 'failed'` | Current task status |
+| `imageUrl` | `string \| null` | URL to the generated image (available when `succeeded`) |
+| `expiresOn` | `string \| null` | When the image URL expires |
 
 ---
 
@@ -1104,12 +1222,14 @@ import type {
   // Responses
   TextResponse,
   ImageResponse,
+  ImageTaskResponse,
   VideoTaskResponse,
   MusicTaskResponse,
   VoiceSTTResponse,
 
   // Streaming
   JassieChunk,
+  ImageStreamEvent,
   PollOptions,
   Usage,
 } from 'jassie-ai';

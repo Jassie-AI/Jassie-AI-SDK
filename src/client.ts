@@ -7,6 +7,7 @@ import {
   JassieTimeoutError,
 } from './errors.js';
 import { JassieStream } from './streaming/stream.js';
+import { ImageStream } from './streaming/image-stream.js';
 import { detectPlatform } from './streaming/platform.js';
 import { startFetchTransport } from './streaming/transport-fetch.js';
 import { startXHRTransport } from './streaming/transport-xhr.js';
@@ -243,6 +244,98 @@ export class JassieAI {
     } else {
       startFetchTransport(transportOptions, stream);
     }
+
+    return stream;
+  }
+
+  /** Start a streaming image request, returns ImageStream async iterable */
+  _imageStream(path: string, body: any): ImageStream {
+    const stream = new ImageStream();
+    const url = `${this.baseURL}${path}`;
+    const isGet = body === null || body === undefined;
+    const headers: Record<string, string> = {
+      ...this.buildHeaders(),
+      'Cache-Control': 'no-cache',
+    };
+    if (isGet) delete headers['Content-Type'];
+
+    (async () => {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: isGet ? 'GET' : 'POST',
+          headers,
+          body: isGet ? undefined : JSON.stringify(body),
+          signal: stream.signal,
+        });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          stream._end();
+        } else {
+          stream._error(new JassieConnectionError(err?.message));
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        let errorBody: any;
+        try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+        stream._error(JassieAPIError.fromResponse(response.status, errorBody));
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        stream._error(new JassieConnectionError('Response body is not readable'));
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const parseLine = (raw: string) => {
+        let trimmed = raw.trim();
+        if (!trimmed) return;
+        // SSE format: strip "data: " prefix
+        if (trimmed.startsWith('data: ')) trimmed = trimmed.slice(6);
+        if (!trimmed || trimmed === '[DONE]') return;
+        try {
+          stream._push(JSON.parse(trimmed));
+        } catch {}
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop()!;
+
+          for (const line of lines) {
+            parseLine(line);
+          }
+        }
+
+        // Flush remaining
+        if (buffer.trim()) {
+          for (const line of buffer.split('\n')) {
+            parseLine(line);
+          }
+        }
+
+        stream._end();
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          stream._end();
+        } else {
+          stream._error(
+            err instanceof Error ? err : new JassieConnectionError(String(err)),
+          );
+        }
+      }
+    })();
 
     return stream;
   }

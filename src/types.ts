@@ -151,6 +151,15 @@ export interface ImageResponse {
   usage: number;
 }
 
+export interface ImageTaskResponse {
+  type: 'status' | 'completed' | 'failed';
+  model: string;
+  taskId: string;
+  status: 'pending' | 'preview_ready' | 'succeeded' | 'failed';
+  imageUrl: string | null;
+  expiresOn: string | null;
+}
+
 export interface VideoTaskResponse {
   model: string;
   taskId: string;
@@ -170,6 +179,47 @@ export interface MusicTaskResponse {
 export interface VoiceSTTResponse {
   text: string;
 }
+
+// ── Image Streaming Events ───────────────────────────────────────────────────
+
+export interface ImageStreamStatus {
+  type: 'status';
+  model: string;
+  taskId: string;
+  status: string;
+}
+
+export interface ImageStreamPreview {
+  type: 'preview';
+  model: string;
+  taskId: string;
+  imageUrl: string;
+}
+
+export interface ImageStreamCompleted {
+  type: 'completed';
+  model: string;
+  taskId: string;
+  status: string;
+  imageUrl: string | null;
+  expiresOn: string | null;
+}
+
+export interface ImageStreamFailed {
+  type: 'failed';
+  model: string;
+  taskId: string;
+  status: string;
+  imageUrl: null;
+  expiresOn: null;
+  error: string;
+}
+
+export type ImageStreamEvent =
+  | ImageStreamStatus
+  | ImageStreamPreview
+  | ImageStreamCompleted
+  | ImageStreamFailed;
 
 // ── Polling Options ──────────────────────────────────────────────────────────
 
