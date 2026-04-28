@@ -801,8 +801,36 @@ async function testVoiceTTS() {
   }
 }
 
+async function testVoiceTTSWithSample() {
+  section('7b. Voice — TTS with voice cloning (sampleVoice)');
+  if (!ttsAudioBuffer) {
+    fail('voice.tts (clone)', new Error('No TTS audio from previous test — skipping'));
+    return;
+  }
+  try {
+    const sampleFile = new File(
+      [new Blob([ttsAudioBuffer], { type: 'audio/mp3' })],
+      'sample-voice.mp3',
+      { type: 'audio/mp3' },
+    );
+    const audioBuffer = await client.voice.tts({
+      model: 'jassie-voice',
+      text: 'This sentence was generated using voice cloning from a sample.',
+      sampleVoice: sampleFile,
+      output_format: 'mp3',
+    });
+    if (audioBuffer && audioBuffer.byteLength > 0) {
+      pass('voice.tts (clone)', `received ${audioBuffer.byteLength} bytes of cloned audio`);
+    } else {
+      fail('voice.tts (clone)', new Error('Empty audio buffer returned'));
+    }
+  } catch (err) {
+    fail('voice.tts (clone)', err);
+  }
+}
+
 async function testVoiceSTT() {
-  section('7b. Voice — STT (speech-to-text, round-trip)');
+  section('7c. Voice — STT (speech-to-text, round-trip)');
   if (!ttsAudioBuffer) {
     fail('voice.stt', new Error('No TTS audio from previous test — skipping'));
     return;
@@ -968,6 +996,7 @@ async function run() {
   // ── 7. Voice — Jassie Voice (TTS & STT) ──
   header('7. VOICE — JASSIE VOICE (TTS & STT)');
   await withRetry(testVoiceTTS);
+  await withRetry(testVoiceTTSWithSample);
   await withRetry(testVoiceSTT);
 
   // ── 8. Error Handling ──
