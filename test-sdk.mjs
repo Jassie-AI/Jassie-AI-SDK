@@ -1,8 +1,9 @@
 /**
  * Jassie AI SDK — Comprehensive Test Suite
  *
- * Tests every feature: text, code, image, video, music generation,
- * streaming, vision, web search, error handling.
+ * Tests every feature: text (Pulse & Bolt), code, image (Pixel & Pixel-X),
+ * video (Vibe, Motion, Cinema), music (Beat), voice (TTS & STT),
+ * web search, vision (image & video), streaming, error handling.
  *
  * Usage:
  *   node --env-file=.env test-sdk.mjs
@@ -14,7 +15,9 @@ import { JassieAI, JassieAuthenticationError } from './lib/esm/index.js';
 
 const API_KEY = process.env.JASSIE_API_KEY;
 const TEST_IMAGE_URL =
-  'https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg';
+  'https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg';
+const TEST_VIDEO_URL =
+  'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241115/cqqkru/1.mp4';
 
 if (!API_KEY || API_KEY === 'your-api-key-here') {
   console.error('\n  ✗ Please set JASSIE_API_KEY in the .env file\n');
@@ -22,6 +25,7 @@ if (!API_KEY || API_KEY === 'your-api-key-here') {
 }
 
 const client = new JassieAI({ apiKey: API_KEY });
+const videoVisionClient = new JassieAI({ apiKey: API_KEY, timeout: 120000 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -52,9 +56,6 @@ function fail(name, err) {
   failures.push({ name, error: msg });
 }
 
-// Wraps a test in a retry loop. The live API occasionally returns empty content
-// or an empty stream (upstream LLM flake). On failure we rewind the counters
-// and re-run the test. Only the final attempt's outcome counts.
 async function withRetry(testFn, maxAttempts = 3) {
   let result;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -64,7 +65,6 @@ async function withRetry(testFn, maxAttempts = 3) {
     result = await testFn();
     if (failed === failedSnap) return result;
     if (attempt < maxAttempts) {
-      // Rewind state so the retry's output is the source of truth.
       passed = passedSnap;
       failed = failedSnap;
       failures.length = failuresSnap;
@@ -75,7 +75,6 @@ async function withRetry(testFn, maxAttempts = 3) {
   return result;
 }
 
-// Schema validator. Shape is { fieldName: { type: 'string'|'number'|'array'|'object'|'string|null', required: bool } }
 function verifyShape(actual, schema, name) {
   if (actual == null || typeof actual !== 'object') {
     fail(`${name} shape`, new Error(`Response is not an object: ${typeof actual}`));
@@ -89,7 +88,6 @@ function verifyShape(actual, schema, name) {
       if (spec.required) issues.push(`missing required field "${field}"`);
       continue;
     }
-    // Type check (allow null for nullable)
     const types = spec.type.split('|').map((t) => t.trim());
     let ok = false;
     for (const t of types) {
@@ -104,7 +102,6 @@ function verifyShape(actual, schema, name) {
       issues.push(`field "${field}" expected ${spec.type}, got ${value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value}`);
     }
   }
-  // Report extra fields (informational, doesn't fail)
   const extras = Object.keys(actual).filter((k) => !(k in schema));
   if (issues.length > 0) {
     fail(`${name} shape`, new Error(issues.join('; ')));
@@ -114,7 +111,8 @@ function verifyShape(actual, schema, name) {
   return true;
 }
 
-// ── Documented schemas (from README.md / src/types.ts) ──
+// ── Documented Schemas ──────────────────────────────────────────────────────
+
 const TEXT_RESPONSE_SCHEMA = {
   content: { type: 'string', required: true },
   request_id: { type: 'string', required: false },
@@ -125,9 +123,11 @@ const TEXT_RESPONSE_SCHEMA = {
 };
 
 const IMAGE_RESPONSE_SCHEMA = {
-  images: { type: 'array', required: true },
-  created: { type: 'number', required: true },
-  usage: { type: 'number', required: true },
+  model: { type: 'string', required: true },
+  taskId: { type: 'string', required: true },
+  status: { type: 'string', required: true },
+  imageUrl: { type: 'string|null', required: true },
+  expiresOn: { type: 'string|null', required: true },
 };
 
 const VIDEO_TASK_SCHEMA = {
@@ -146,10 +146,12 @@ const MUSIC_TASK_SCHEMA = {
   expiresOn: { type: 'string|null', required: true },
 };
 
-// ── 1. TEXT GENERATION ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. TEXT GENERATION — JASSIE PULSE
+// ═══════════════════════════════════════════════════════════════════════════
 
-async function testTextCreate() {
-  section('1a. Text — create (non-streaming, jassie-pulse)');
+async function testPulseNonStreaming() {
+  section('1a. Pulse — non-streaming');
   try {
     const res = await client.text.generate({
       model: 'jassie-pulse',
@@ -158,37 +160,18 @@ async function testTextCreate() {
       temperature: 0.7,
     });
     if (res && res.content) {
-      pass('text.generate', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate');
+      pass('pulse non-streaming', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse non-streaming');
     } else {
-      fail('text.generate', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('pulse non-streaming', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.generate', err);
+    fail('pulse non-streaming', err);
   }
 }
 
-async function testTextCreateBolt() {
-  section('1b. Text — create (non-streaming, jassie-bolt)');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-bolt',
-      messages: [{ role: 'user', content: 'What is 2 + 2?' }],
-      maxTokens: 50,
-    });
-    if (res && res.content) {
-      pass('text.generate (bolt)', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (bolt)');
-    } else {
-      fail('text.generate (bolt)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('text.generate (bolt)', err);
-  }
-}
-
-async function testTextCreateStream() {
-  section('1c. Text — create (stream: true)');
+async function testPulseStreaming() {
+  section('1b. Pulse — streaming (for-await-of)');
   try {
     const stream = client.text.generate({
       model: 'jassie-pulse',
@@ -196,7 +179,6 @@ async function testTextCreateStream() {
       stream: true,
       maxTokens: 100,
     });
-
     let chunks = 0;
     let text = '';
     for await (const chunk of stream) {
@@ -204,108 +186,37 @@ async function testTextCreateStream() {
       if (chunk.type === 'text') text += chunk.content;
     }
     if (chunks > 0 && text.length > 0) {
-      pass('text.generate (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
+      pass('pulse streaming', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
     } else {
-      fail('text.generate (stream)', new Error(`No chunks received`));
+      fail('pulse streaming', new Error('No chunks received'));
     }
   } catch (err) {
-    fail('text.generate (stream)', err);
+    fail('pulse streaming', err);
   }
 }
 
-async function testTextCreateFinalText() {
-  section('1d. Text — create stream.finalText()');
+async function testPulseFinalText() {
+  section('1c. Pulse — streaming finalText()');
   try {
     const stream = client.text.generate({
-      model: 'jassie-bolt',
+      model: 'jassie-pulse',
       messages: [{ role: 'user', content: 'Say "SDK test passed" and nothing else.' }],
       stream: true,
       maxTokens: 50,
     });
-
     const text = await stream.finalText();
     if (text && text.length > 0) {
-      pass('stream.finalText()', `"${text.slice(0, 80)}"`);
+      pass('pulse finalText()', `"${text.slice(0, 80)}"`);
     } else {
-      fail('stream.finalText()', new Error('Empty result'));
+      fail('pulse finalText()', new Error('Empty result'));
     }
   } catch (err) {
-    fail('stream.finalText()', err);
+    fail('pulse finalText()', err);
   }
 }
 
-async function testTextWebSearch() {
-  section('1e. Text — web search (web: "auto")');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
-      web: 'auto',
-      maxTokens: 200,
-    });
-    if (res && res.content) {
-      pass('text.generate (web)', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (web)');
-    } else {
-      fail('text.generate (web)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('text.generate (web)', err);
-  }
-}
-
-async function testTextVision() {
-  section('1f. Text — vision (image input)');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [
-        {
-          role: 'user',
-          content: 'Describe this image in one sentence.',
-          image: TEST_IMAGE_URL,
-        },
-      ],
-      maxTokens: 150,
-    });
-    if (res && res.content) {
-      pass('text.generate (vision)', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (vision)');
-    } else {
-      fail('text.generate (vision)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('text.generate (vision)', err);
-  }
-}
-
-async function testTextVisionMultiImage() {
-  section('1g. Text — vision (multiple images)');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [
-        {
-          role: 'user',
-          content: 'Are these two images the same? Answer briefly.',
-          image: [TEST_IMAGE_URL, TEST_IMAGE_URL],
-        },
-      ],
-      maxTokens: 100,
-    });
-    if (res && res.content) {
-      pass('text.generate (multi-image)', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (multi-image)');
-    } else {
-      fail('text.generate (multi-image)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('text.generate (multi-image)', err);
-  }
-}
-
-async function testTextSystemMessage() {
-  section('1h. Text — system message');
+async function testPulseSystemMessage() {
+  section('1d. Pulse — system message');
   try {
     const res = await client.text.generate({
       model: 'jassie-pulse',
@@ -316,20 +227,232 @@ async function testTextSystemMessage() {
       maxTokens: 100,
     });
     if (res && res.content) {
-      pass('text.generate (system msg)', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'text.generate (system msg)');
+      pass('pulse system message', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse system message');
     } else {
-      fail('text.generate (system msg)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('pulse system message', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('text.generate (system msg)', err);
+    fail('pulse system message', err);
   }
 }
 
-// ── 2. CODE GENERATION ──────────────────────────────────────────────────────
+async function testPulseWebSearch() {
+  section('1e. Pulse — web search (web: "auto")');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-pulse',
+      messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
+      web: 'auto',
+      maxTokens: 200,
+    });
+    if (res && res.content) {
+      pass('pulse web search', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse web search');
+    } else {
+      fail('pulse web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('pulse web search', err);
+  }
+}
 
-async function testCodeCreate() {
-  section('2a. Code — create (non-streaming)');
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. TEXT GENERATION — JASSIE BOLT
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function testBoltNonStreaming() {
+  section('2a. Bolt — non-streaming');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'What is 2 + 2?' }],
+      maxTokens: 50,
+    });
+    if (res && res.content) {
+      pass('bolt non-streaming', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt non-streaming');
+    } else {
+      fail('bolt non-streaming', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('bolt non-streaming', err);
+  }
+}
+
+async function testBoltStreaming() {
+  section('2b. Bolt — streaming (for-await-of)');
+  try {
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'Count from 1 to 5.' }],
+      stream: true,
+      maxTokens: 100,
+    });
+    let chunks = 0;
+    let text = '';
+    for await (const chunk of stream) {
+      chunks++;
+      if (chunk.type === 'text') text += chunk.content;
+    }
+    if (chunks > 0 && text.length > 0) {
+      pass('bolt streaming', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
+    } else {
+      fail('bolt streaming', new Error('No chunks received'));
+    }
+  } catch (err) {
+    fail('bolt streaming', err);
+  }
+}
+
+async function testBoltFinalText() {
+  section('2c. Bolt — streaming finalText()');
+  try {
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'Say "SDK test passed" and nothing else.' }],
+      stream: true,
+      maxTokens: 50,
+    });
+    const text = await stream.finalText();
+    if (text && text.length > 0) {
+      pass('bolt finalText()', `"${text.slice(0, 80)}"`);
+    } else {
+      fail('bolt finalText()', new Error('Empty result'));
+    }
+  } catch (err) {
+    fail('bolt finalText()', err);
+  }
+}
+
+async function testBoltImageVision() {
+  section('2d. Bolt — single image vision');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        {
+          role: 'user',
+          content: 'Describe this image in one sentence.',
+          image: TEST_IMAGE_URL,
+        },
+      ],
+      maxTokens: 150,
+    });
+    if (res && res.content) {
+      pass('bolt image vision', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt image vision');
+    } else {
+      fail('bolt image vision', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('bolt image vision', err);
+  }
+}
+
+async function testBoltMultiImageVision() {
+  section('2e. Bolt — multiple image vision');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        {
+          role: 'user',
+          content: 'Are these two images the same? Answer briefly.',
+          image: [TEST_IMAGE_URL, TEST_IMAGE_URL],
+        },
+      ],
+      maxTokens: 100,
+    });
+    if (res && res.content) {
+      pass('bolt multi-image vision', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt multi-image vision');
+    } else {
+      fail('bolt multi-image vision', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('bolt multi-image vision', err);
+  }
+}
+
+async function testBoltVideoVision() {
+  section('2f. Bolt — single video vision (streaming)');
+  try {
+    const stream = videoVisionClient.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        {
+          role: 'user',
+          content: 'Describe what is happening in this video in one sentence.',
+          video: TEST_VIDEO_URL,
+        },
+      ],
+      stream: true,
+      maxTokens: 150,
+    });
+    const text = await stream.finalText();
+    if (text && text.length > 0) {
+      pass('bolt video vision', `content: "${text.slice(0, 80)}…"`);
+    } else {
+      fail('bolt video vision', new Error('Empty result'));
+    }
+  } catch (err) {
+    fail('bolt video vision', err);
+  }
+}
+
+async function testBoltMultiVideoVision() {
+  section('2g. Bolt — multiple video vision (streaming)');
+  try {
+    const stream = videoVisionClient.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        {
+          role: 'user',
+          content: 'Are these two videos the same? Answer briefly.',
+          video: [TEST_VIDEO_URL, TEST_VIDEO_URL],
+        },
+      ],
+      stream: true,
+      maxTokens: 100,
+    });
+    const text = await stream.finalText();
+    if (text && text.length > 0) {
+      pass('bolt multi-video vision', `content: "${text.slice(0, 80)}…"`);
+    } else {
+      fail('bolt multi-video vision', new Error('Empty result'));
+    }
+  } catch (err) {
+    fail('bolt multi-video vision', err);
+  }
+}
+
+async function testBoltWebSearch() {
+  section('2h. Bolt — web search (web: "auto")');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
+      web: 'auto',
+      maxTokens: 200,
+    });
+    if (res && res.content) {
+      pass('bolt web search', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt web search');
+    } else {
+      fail('bolt web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('bolt web search', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. CODE GENERATION — JASSIE CODE
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function testCodeNonStreaming() {
+  section('3a. Code — non-streaming');
   try {
     const res = await client.code.generate({
       model: 'jassie-code',
@@ -339,18 +462,18 @@ async function testCodeCreate() {
       maxTokens: 200,
     });
     if (res && res.content) {
-      pass('code.generate', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'code.generate');
+      pass('code non-streaming', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'code non-streaming');
     } else {
-      fail('code.generate', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('code non-streaming', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('code.generate', err);
+    fail('code non-streaming', err);
   }
 }
 
-async function testCodeCreateStream() {
-  section('2b. Code — create (stream: true)');
+async function testCodeStreaming() {
+  section('3b. Code — streaming');
   try {
     const stream = client.code.generate({
       model: 'jassie-code',
@@ -360,7 +483,6 @@ async function testCodeCreateStream() {
       stream: true,
       maxTokens: 200,
     });
-
     let chunks = 0;
     let text = '';
     for await (const chunk of stream) {
@@ -368,184 +490,202 @@ async function testCodeCreateStream() {
       if (chunk.type === 'text') text += chunk.content;
     }
     if (chunks > 0 && text.length > 0) {
-      pass('code.generate (stream)', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
+      pass('code streaming', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
     } else {
-      fail('code.generate (stream)', new Error('No chunks received'));
+      fail('code streaming', new Error('No chunks received'));
     }
   } catch (err) {
-    fail('code.generate (stream)', err);
+    fail('code streaming', err);
   }
 }
 
-// ── 3. IMAGE GENERATION ─────────────────────────────────────────────────────
+async function testCodeWebSearch() {
+  section('3c. Code — web search (web: "auto")');
+  try {
+    const res = await client.code.generate({
+      model: 'jassie-code',
+      messages: [
+        { role: 'user', content: 'Show me how to use the latest Bun.serve() API with examples.' },
+      ],
+      web: 'auto',
+      maxTokens: 300,
+    });
+    if (res && res.content) {
+      pass('code web search', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'code web search');
+    } else {
+      fail('code web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('code web search', err);
+  }
+}
 
-async function testImageGenerate() {
-  section('3a. Image — generate (text-to-image, jassie-pixel)');
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function testImagePixel() {
+  section('4a. Image — Pixel (text-to-image)');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
       prompt: 'A serene mountain landscape at sunset with a calm lake',
-      width: 512,
-      height: 512,
+      aspectRatio: '1:1',
     });
-    if (res && res.images && res.images.length > 0) {
-      pass('image.generate (pixel)', `${res.images.length} image(s)`);
-      console.log(`    → ${res.images[0]}`);
-      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (pixel)');
+    if (res && res.imageUrl) {
+      pass('image pixel', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image pixel');
     } else {
-      fail('image.generate (pixel)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image pixel', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('image.generate (pixel)', err);
+    fail('image pixel', err);
   }
 }
 
-async function testImageGenerateAdvanced() {
-  section('3b. Image — generate (jassie-pixel-x, advanced params)');
+async function testImagePixelX() {
+  section('4b. Image — Pixel-X (text-to-image, 4K)');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel-x',
       prompt: 'A futuristic cityscape at night with neon lights',
-      width: 768,
-      height: 512,
-      guidance_scale: 7.5,
-      num_inference_steps: 30,
-      negative_prompt: 'blurry, low quality',
+      aspectRatio: '16:9',
     });
-    if (res && res.images && res.images.length > 0) {
-      pass('image.generate (pixel-x)', `${res.images.length} image(s)`);
-      console.log(`    → ${res.images[0]}`);
-      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (pixel-x)');
+    if (res && res.imageUrl) {
+      pass('image pixel-x', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image pixel-x');
     } else {
-      fail('image.generate (pixel-x)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image pixel-x', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('image.generate (pixel-x)', err);
+    fail('image pixel-x', err);
   }
 }
 
 async function testImageWithReference() {
-  section('3c. Image — generate with reference image');
+  section('4c. Image — Pixel with reference image');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
       prompt: 'A painting of this mountain scene in watercolor style',
-      reference: TEST_IMAGE_URL,
-      width: 512,
-      height: 512,
+      image: TEST_IMAGE_URL,
     });
-    if (res && res.images && res.images.length > 0) {
-      pass('image.generate (reference)', `${res.images.length} image(s)`);
-      console.log(`    → ${res.images[0]}`);
-      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (reference)');
+    if (res && res.imageUrl) {
+      pass('image reference', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image reference');
     } else {
-      fail('image.generate (reference)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image reference', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('image.generate (reference)', err);
+    fail('image reference', err);
   }
 }
 
-async function testImageInterpolation() {
-  section('3d. Image — generate with interpolation (first_image + last_image)');
+async function testImageWithMultiReference() {
+  section('4d. Image — Pixel with multiple reference images');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
-      prompt: 'Transition between mountain scenes',
-      first_image: TEST_IMAGE_URL,
-      last_image: TEST_IMAGE_URL,
-      width: 512,
-      height: 512,
+      prompt: 'Blend these mountain scenes into a panoramic watercolor painting',
+      image: [TEST_IMAGE_URL, TEST_IMAGE_URL],
     });
-    if (res && res.images && res.images.length > 0) {
-      pass('image.generate (interpolation)', `${res.images.length} image(s)`);
-      console.log(`    → ${res.images[0]}`);
-      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image.generate (interpolation)');
+    if (res && res.imageUrl) {
+      pass('image multi-reference', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image multi-reference');
     } else {
-      fail('image.generate (interpolation)', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail('image multi-reference', new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('image.generate (interpolation)', err);
+    fail('image multi-reference', err);
   }
 }
 
-// ── 4. VIDEO GENERATION ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. VIDEO GENERATION — JASSIE VIBE, MOTION, CINEMA
+// ═══════════════════════════════════════════════════════════════════════════
 
-async function testVideoGenerate() {
-  section('4a. Video — generate (start async task)');
+async function testVideoGenerate(model, label) {
+  section(`5. Video — ${label} generate`);
   try {
     const task = await client.video.generate({
-      model: 'jassie-vibe',
-      prompt: 'A calm ocean wave crashing on a sandy beach',
+      model,
+      prompt: 'A calm ocean wave crashing on a sandy beach at golden hour',
       duration: 5,
     });
     if (task && task.taskId) {
-      pass('video.generate', `taskId: ${task.taskId}, status: ${task.status}`);
-      verifyShape(task, VIDEO_TASK_SCHEMA, 'video.generate');
+      pass(`video.generate (${label})`, `taskId: ${task.taskId}, status: ${task.status}`);
+      verifyShape(task, VIDEO_TASK_SCHEMA, `video.generate (${label})`);
       return task.taskId;
     } else {
-      fail('video.generate', new Error(`Unexpected response: ${JSON.stringify(task)}`));
+      fail(`video.generate (${label})`, new Error(`Unexpected response: ${JSON.stringify(task)}`));
       return null;
     }
   } catch (err) {
-    fail('video.generate', err);
+    fail(`video.generate (${label})`, err);
     return null;
   }
 }
 
-async function testVideoStatus(taskId) {
-  section('4b. Video — status (check task)');
+async function testVideoStatus(taskId, label) {
+  section(`5. Video — ${label} status check`);
   if (!taskId) {
-    fail('video.status', new Error('No taskId from previous test'));
+    fail(`video.status (${label})`, new Error('No taskId from previous test'));
     return;
   }
   try {
     const res = await client.video.status(taskId);
     if (res && res.status) {
-      pass('video.status', `status: ${res.status}, videoUrl: ${res.videoUrl ?? 'null (still processing)'}`);
-      verifyShape(res, VIDEO_TASK_SCHEMA, 'video.status');
+      pass(`video.status (${label})`, `status: ${res.status}, videoUrl: ${res.videoUrl ?? 'null (processing)'}`);
+      verifyShape(res, VIDEO_TASK_SCHEMA, `video.status (${label})`);
     } else {
-      fail('video.status', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+      fail(`video.status (${label})`, new Error(`Unexpected response: ${JSON.stringify(res)}`));
     }
   } catch (err) {
-    fail('video.status', err);
+    fail(`video.status (${label})`, err);
   }
 }
 
-async function testVideoStatusPolling(taskId) {
-  section('4c. Video — status with polling options (wait for completion)');
+async function testVideoStatusPolling(taskId, label) {
+  section(`5. Video — ${label} poll to completion`);
   if (!taskId) {
-    fail('video.status (polling)', new Error('No taskId from previous test'));
+    fail(`video.poll (${label})`, new Error('No taskId from previous test'));
     return;
   }
   try {
     let pollCount = 0;
     const res = await client.video.status(taskId, {
       interval: 5000,
-      timeout: 300000, // 5 min max
+      timeout: 600000, // 10 min max
       onPoll: (r) => {
         pollCount++;
-        process.stdout.write(`    ...poll #${pollCount}: status=${r.status}\n`);
+        process.stdout.write(`    ...poll #${pollCount} [${label}]: status=${r.status}\n`);
       },
     });
     if (res.status === 'succeeded' && res.videoUrl) {
-      pass('video.status (polling)', `succeeded`);
+      pass(`video.poll (${label})`, 'succeeded');
       console.log(`    → ${res.videoUrl}`);
     } else if (res.status === 'failed') {
-      fail('video.status (polling)', new Error('Video generation failed on server'));
+      fail(`video.poll (${label})`, new Error('Video generation failed on server'));
     } else {
-      pass('video.status (polling)', `final status: ${res.status}`);
+      pass(`video.poll (${label})`, `final status: ${res.status}`);
     }
-    verifyShape(res, VIDEO_TASK_SCHEMA, 'video.status (polling)');
+    verifyShape(res, VIDEO_TASK_SCHEMA, `video.poll (${label})`);
   } catch (err) {
-    fail('video.status (polling)', err);
+    fail(`video.poll (${label})`, err);
   }
 }
 
-// ── 5. MUSIC GENERATION ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. MUSIC GENERATION — JASSIE BEAT
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function testMusicGenerate() {
-  section('5a. Music — generate (start async task)');
+  section('6a. Music — generate (start async task)');
   try {
     const task = await client.music.generate({
       model: 'jassie-beat',
@@ -568,7 +708,7 @@ async function testMusicGenerate() {
 }
 
 async function testMusicStatus(taskId) {
-  section('5b. Music — status (check task)');
+  section('6b. Music — status (check task)');
   if (!taskId) {
     fail('music.status', new Error('No taskId from previous test'));
     return;
@@ -576,7 +716,7 @@ async function testMusicStatus(taskId) {
   try {
     const res = await client.music.status(taskId);
     if (res && res.status) {
-      pass('music.status', `status: ${res.status}, musicUrl: ${res.musicUrl ?? 'null (still processing)'}`);
+      pass('music.status', `status: ${res.status}, musicUrl: ${res.musicUrl ?? 'null (processing)'}`);
       verifyShape(res, MUSIC_TASK_SCHEMA, 'music.status');
     } else {
       fail('music.status', new Error(`Unexpected response: ${JSON.stringify(res)}`));
@@ -587,9 +727,9 @@ async function testMusicStatus(taskId) {
 }
 
 async function testMusicStatusPolling(taskId) {
-  section('5c. Music — status with polling options (wait for completion)');
+  section('6c. Music — poll to completion');
   if (!taskId) {
-    fail('music.status (polling)', new Error('No taskId from previous test'));
+    fail('music.poll', new Error('No taskId from previous test'));
     return;
   }
   try {
@@ -603,21 +743,21 @@ async function testMusicStatusPolling(taskId) {
       },
     });
     if (res.status === 'completed' && res.musicUrl) {
-      pass('music.status (polling)', `completed`);
+      pass('music.poll', 'completed');
       console.log(`    → ${res.musicUrl}`);
     } else if (res.status === 'failed') {
-      fail('music.status (polling)', new Error('Music generation failed on server'));
+      fail('music.poll', new Error('Music generation failed on server'));
     } else {
-      pass('music.status (polling)', `final status: ${res.status}`);
+      pass('music.poll', `final status: ${res.status}`);
     }
-    verifyShape(res, MUSIC_TASK_SCHEMA, 'music.status (polling)');
+    verifyShape(res, MUSIC_TASK_SCHEMA, 'music.poll');
   } catch (err) {
-    fail('music.status (polling)', err);
+    fail('music.poll', err);
   }
 }
 
 async function testMusicGenerateWithLyrics() {
-  section('5d. Music — generate with lyrics (immediate response)');
+  section('6d. Music — generate with lyrics');
   try {
     const task = await client.music.generate({
       model: 'jassie-beat',
@@ -636,10 +776,61 @@ async function testMusicGenerateWithLyrics() {
   }
 }
 
-// ── 6. ERROR HANDLING ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. VOICE — JASSIE VOICE (TTS & STT)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let ttsAudioBuffer = null; // shared between TTS and STT round-trip
+
+async function testVoiceTTS() {
+  section('7a. Voice — TTS (text-to-speech)');
+  try {
+    const audioBuffer = await client.voice.tts({
+      model: 'jassie-voice',
+      text: 'Hello, this is a test of the Jassie AI text to speech system.',
+      output_format: 'mp3',
+    });
+    if (audioBuffer && audioBuffer.byteLength > 0) {
+      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio`);
+      ttsAudioBuffer = audioBuffer; // save for STT test
+    } else {
+      fail('voice.tts', new Error('Empty audio buffer returned'));
+    }
+  } catch (err) {
+    fail('voice.tts', err);
+  }
+}
+
+async function testVoiceSTT() {
+  section('7b. Voice — STT (speech-to-text, round-trip)');
+  if (!ttsAudioBuffer) {
+    fail('voice.stt', new Error('No TTS audio from previous test — skipping'));
+    return;
+  }
+  try {
+    const audioBlob = new Blob([ttsAudioBuffer], { type: 'audio/mp3' });
+    // Attach a .name for the SDK's FormData append
+    const audioFile = new File([audioBlob], 'test-audio.mp3', { type: 'audio/mp3' });
+    const text = await client.voice.stt({
+      model: 'jassie-voice',
+      file: audioFile,
+    });
+    if (text && text.length > 0) {
+      pass('voice.stt', `transcribed: "${text.slice(0, 100)}"`);
+    } else {
+      fail('voice.stt', new Error('Empty transcription returned'));
+    }
+  } catch (err) {
+    fail('voice.stt', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. ERROR HANDLING
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function testAuthError() {
-  section('6a. Error — invalid API key (JassieAuthenticationError)');
+  section('8a. Error — invalid API key');
   try {
     const badClient = new JassieAI({ apiKey: 'invalid-key-12345' });
     await badClient.text.generate({
@@ -652,14 +843,13 @@ async function testAuthError() {
     if (err instanceof JassieAuthenticationError || (err.status && err.status === 401)) {
       pass('auth error', `Caught: ${err.name} — "${err.message}"`);
     } else {
-      // Any error from invalid key is acceptable (could be 403, network error, etc.)
       pass('auth error', `Caught error: ${err.name} — "${err.message}"`);
     }
   }
 }
 
 async function testMissingApiKey() {
-  section('6b. Error — missing API key (constructor throws)');
+  section('8b. Error — missing API key');
   try {
     new JassieAI({ apiKey: '' });
     fail('missing key', new Error('Expected constructor to throw'));
@@ -672,10 +862,12 @@ async function testMissingApiKey() {
   }
 }
 
-// ── 7. STREAM ABORT ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. STREAMING INFRASTRUCTURE
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function testStreamAbort() {
-  section('7. Stream — abort mid-stream');
+  section('9a. Stream — abort mid-stream');
   try {
     const stream = client.text.generate({
       model: 'jassie-pulse',
@@ -683,7 +875,6 @@ async function testStreamAbort() {
       stream: true,
       maxTokens: 500,
     });
-
     let chunks = 0;
     for await (const chunk of stream) {
       chunks++;
@@ -698,7 +889,6 @@ async function testStreamAbort() {
       fail('stream.abort()', new Error('No chunks before abort'));
     }
   } catch (err) {
-    // AbortError is expected
     if (err.name === 'AbortError' || err.message?.includes('abort')) {
       pass('stream.abort()', 'Caught expected AbortError');
     } else {
@@ -707,7 +897,9 @@ async function testStreamAbort() {
   }
 }
 
-// ── Runner ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// RUNNER
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function run() {
   console.log('\n  Jassie AI SDK — Comprehensive Test Suite');
@@ -715,50 +907,76 @@ async function run() {
   console.log(`  API key:     ${API_KEY.slice(0, 8)}…${API_KEY.slice(-4)}`);
   console.log(`  Base URL:    https://api.jassie.ai`);
   console.log(`  Test image:  ${TEST_IMAGE_URL.slice(0, 50)}…`);
+  console.log(`  Test video:  ${TEST_VIDEO_URL.slice(0, 50)}…`);
 
-  // ── Text Generation Tests ──
-  header('1. TEXT GENERATION');
-  await withRetry(testTextCreate);
-  await withRetry(testTextCreateBolt);
-  await withRetry(testTextCreateStream);
-  await withRetry(testTextCreateFinalText);
-  await withRetry(testTextWebSearch);
-  await withRetry(testTextVision);
-  await withRetry(testTextVisionMultiImage);
-  await withRetry(testTextSystemMessage);
+  // ── 1. Text Generation — Jassie Pulse ──
+  header('1. TEXT GENERATION — JASSIE PULSE');
+  await withRetry(testPulseNonStreaming);
+  await withRetry(testPulseStreaming);
+  await withRetry(testPulseFinalText);
+  await withRetry(testPulseSystemMessage);
+  await withRetry(testPulseWebSearch);
 
-  // ── Code Generation Tests ──
-  header('2. CODE GENERATION');
-  await withRetry(testCodeCreate);
-  await withRetry(testCodeCreateStream);
+  // ── 2. Text Generation — Jassie Bolt ──
+  header('2. TEXT GENERATION — JASSIE BOLT');
+  await withRetry(testBoltNonStreaming);
+  await withRetry(testBoltStreaming);
+  await withRetry(testBoltFinalText);
+  await withRetry(testBoltImageVision);
+  await withRetry(testBoltMultiImageVision);
+  await withRetry(testBoltVideoVision);
+  await withRetry(testBoltMultiVideoVision);
+  await withRetry(testBoltWebSearch);
 
-  // ── Image Generation Tests ──
-  header('3. IMAGE GENERATION');
-  await withRetry(testImageGenerate);
-  await withRetry(testImageGenerateAdvanced);
+  // ── 3. Code Generation — Jassie Code ──
+  header('3. CODE GENERATION — JASSIE CODE');
+  await withRetry(testCodeNonStreaming);
+  await withRetry(testCodeStreaming);
+  await withRetry(testCodeWebSearch);
+
+  // ── 4. Image Generation — Jassie Pixel & Pixel-X ──
+  header('4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X');
+  await withRetry(testImagePixel);
+  await withRetry(testImagePixelX);
   await withRetry(testImageWithReference);
-  await withRetry(testImageInterpolation);
+  await withRetry(testImageWithMultiReference);
 
-  // ── Video Generation Tests ──
-  header('4. VIDEO GENERATION (async — may take several minutes)');
-  const videoTaskId = await withRetry(testVideoGenerate);
-  await withRetry(() => testVideoStatus(videoTaskId));
-  await withRetry(() => testVideoStatusPolling(videoTaskId));
+  // ── 5. Video Generation — Vibe, Motion ──
+  // Submit video tasks first, then status check, then poll in parallel.
+  header('5. VIDEO GENERATION — JASSIE VIBE, MOTION');
 
-  // ── Music Generation Tests ──
-  header('5. MUSIC GENERATION (async — may take several minutes)');
+  const vibeTaskId = await withRetry(() => testVideoGenerate('jassie-vibe', 'Vibe 720p'));
+  const motionTaskId = await withRetry(() => testVideoGenerate('jassie-motion', 'Motion 1080p'));
+
+  await withRetry(() => testVideoStatus(vibeTaskId, 'Vibe 720p'));
+  await withRetry(() => testVideoStatus(motionTaskId, 'Motion 1080p'));
+
+  // Poll all video models in parallel to save time
+  console.log('\n    ⏳ Polling all video models in parallel…');
+  await Promise.all([
+    withRetry(() => testVideoStatusPolling(vibeTaskId, 'Vibe 720p')),
+    withRetry(() => testVideoStatusPolling(motionTaskId, 'Motion 1080p')),
+  ]);
+
+  // ── 6. Music Generation — Jassie Beat ──
+  header('6. MUSIC GENERATION — JASSIE BEAT');
   const musicTaskId = await withRetry(testMusicGenerate);
   await withRetry(() => testMusicStatus(musicTaskId));
   await withRetry(() => testMusicStatusPolling(musicTaskId));
   await withRetry(testMusicGenerateWithLyrics);
 
-  // ── Error Handling Tests ──
-  header('6. ERROR HANDLING');
+  // ── 7. Voice — Jassie Voice (TTS & STT) ──
+  header('7. VOICE — JASSIE VOICE (TTS & STT)');
+  await withRetry(testVoiceTTS);
+  await withRetry(testVoiceSTT);
+
+  // ── 8. Error Handling ──
+  header('8. ERROR HANDLING');
   await testAuthError();
   await testMissingApiKey();
 
-  // ── Stream Abort Test ──
-  header('7. STREAMING INFRASTRUCTURE');
+  // ── 9. Streaming Infrastructure ──
+  header('9. STREAMING INFRASTRUCTURE');
   await withRetry(testStreamAbort);
 
   // ── Summary ──

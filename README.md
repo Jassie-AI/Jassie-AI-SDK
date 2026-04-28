@@ -48,6 +48,15 @@ import JassieAI from 'jassie-ai';
 const client = new JassieAI({ apiKey: 'your-api-key' });
 ```
 
+### Constructor Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `apiKey` | `string` | — | **Required.** Your Jassie AI API key |
+| `baseURL` | `string` | `'https://api.jassie.ai'` | API base URL |
+| `timeout` | `number` | `60000` | Request timeout in milliseconds |
+| `maxRetries` | `number` | `2` | Max automatic retries on failure |
+
 ---
 
 ## Text Generation
@@ -96,6 +105,50 @@ for await (const chunk of stream) {
 
 **Message format:** `{ role: 'system' | 'user' | 'assistant', content: string, image?: string | string[], video?: string | string[] }`
 
+> **Note:** The `image` and `video` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
+
+### Vision (Bolt only)
+
+`jassie-bolt` can analyze images and videos passed in messages.
+
+```typescript
+// Single image
+const response = await client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'Describe this image.',
+      image: 'https://example.com/photo.jpg',
+    },
+  ],
+});
+
+// Multiple images
+const response = await client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'Compare these two images.',
+      image: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
+    },
+  ],
+});
+
+// Video
+const response = await client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'What is happening in this video?',
+      video: 'https://example.com/clip.mp4',
+    },
+  ],
+});
+```
+
 ### Response (non-streaming)
 
 | Field | Type | Description |
@@ -118,6 +171,13 @@ const response = await client.code.generate({
 });
 
 console.log(response.content);
+
+// With web search for up-to-date APIs
+const response = await client.code.generate({
+  model: 'jassie-code',
+  messages: [{ role: 'user', content: 'Show me how to use the latest Bun.serve() API.' }],
+  web: 'auto',
+});
 ```
 
 Same parameters and response format as [Text Generation](#parameters).
