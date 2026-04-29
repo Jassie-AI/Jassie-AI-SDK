@@ -975,15 +975,18 @@ async function run() {
 
   const vibeTaskId = await withRetry(() => testVideoGenerate('jassie-vibe', 'Vibe 720p'));
   const motionTaskId = await withRetry(() => testVideoGenerate('jassie-motion', 'Motion 1080p'));
+  const cinmeaTaskId = await withRetry(() => testVideoGenerate('jassie-cinema', 'Cinema'));
 
   await withRetry(() => testVideoStatus(vibeTaskId, 'Vibe 720p'));
   await withRetry(() => testVideoStatus(motionTaskId, 'Motion 1080p'));
+  await withRetry(() => testVideoStatus(cinmeaTaskId, 'Cinema 1080p'));
 
   // Poll all video models in parallel to save time
   console.log('\n    ⏳ Polling all video models in parallel…');
   await Promise.all([
     withRetry(() => testVideoStatusPolling(vibeTaskId, 'Vibe 720p')),
     withRetry(() => testVideoStatusPolling(motionTaskId, 'Motion 1080p')),
+    withRetry(() => testVideoStatusPolling(cinmeaTaskId, 'Cinema 1080p')),
   ]);
 
   // ── 6. Music Generation — Jassie Beat ──
