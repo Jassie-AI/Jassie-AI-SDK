@@ -156,9 +156,18 @@ export class JassieAI {
 
         if (!response.ok) {
           let errorBody: any;
-          try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+          try {
+            errorBody = await response.json();
+          } catch {
+            errorBody = { error: response.statusText };
+          }
+
           const err = JassieAPIError.fromResponse(response.status, errorBody);
-          if (response.status !== 429 && response.status < 500) throw err;
+
+          // Don't retry 4xx (except 429)
+          if (response.status !== 429 && response.status < 500) {
+            throw err;
+          }
           lastError = err;
           continue;
         }
@@ -166,9 +175,22 @@ export class JassieAI {
         return (await response.json()) as T;
       } catch (err: any) {
         clearTimeout(timer);
-        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) throw err;
-        if (err?.name === 'AbortError') { lastError = new JassieTimeoutError(); continue; }
-        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) { lastError = err; continue; }
+
+        // Already a Jassie error that shouldn't be retried
+        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) {
+          throw err;
+        }
+
+        if (err?.name === 'AbortError') {
+          lastError = new JassieTimeoutError();
+          continue;
+        }
+
+        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) {
+          lastError = err;
+          continue;
+        }
+
         lastError = new JassieConnectionError(err?.message ?? 'Request failed');
         continue;
       }
@@ -202,9 +224,18 @@ export class JassieAI {
 
         if (!response.ok) {
           let errorBody: any;
-          try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+          try {
+            errorBody = await response.json();
+          } catch {
+            errorBody = { error: response.statusText };
+          }
+
           const err = JassieAPIError.fromResponse(response.status, errorBody);
-          if (response.status !== 429 && response.status < 500) throw err;
+
+          // Don't retry 4xx (except 429)
+          if (response.status !== 429 && response.status < 500) {
+            throw err;
+          }
           lastError = err;
           continue;
         }
@@ -212,9 +243,22 @@ export class JassieAI {
         return response;
       } catch (err: any) {
         clearTimeout(timer);
-        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) throw err;
-        if (err?.name === 'AbortError') { lastError = new JassieTimeoutError(); continue; }
-        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) { lastError = err; continue; }
+
+        // Already a Jassie error that shouldn't be retried
+        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) {
+          throw err;
+        }
+
+        if (err?.name === 'AbortError') {
+          lastError = new JassieTimeoutError();
+          continue;
+        }
+
+        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) {
+          lastError = err;
+          continue;
+        }
+
         lastError = new JassieConnectionError(err?.message ?? 'Request failed');
         continue;
       }
@@ -279,7 +323,11 @@ export class JassieAI {
 
       if (!response.ok) {
         let errorBody: any;
-        try { errorBody = await response.json(); } catch { errorBody = { error: response.statusText }; }
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = { error: response.statusText };
+        }
         stream._error(JassieAPIError.fromResponse(response.status, errorBody));
         return;
       }

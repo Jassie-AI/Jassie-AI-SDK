@@ -1,3 +1,13 @@
+// ── Client Interface (shared by all resource classes) ────────────────────────
+
+export interface ClientInterface {
+  _request<T>(method: string, path: string, body?: any): Promise<T>;
+  _requestMultipart<T>(path: string, formData: FormData): Promise<T>;
+  _requestMultipartRaw(path: string, formData: FormData): Promise<Response>;
+  _stream(method: string, path: string, body: any): import('./streaming/stream.js').JassieStream;
+  _imageStream(path: string, body: any): import('./streaming/image-stream.js').ImageStream;
+}
+
 // ── SDK Options ──────────────────────────────────────────────────────────────
 
 export type Platform = 'node' | 'web' | 'react-native';

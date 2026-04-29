@@ -1,21 +1,16 @@
 import type {
+  ClientInterface,
   ImageGenerateParams,
   ImageTaskResponse,
-  ImageStreamEvent,
   PollOptions,
 } from '../types.js';
 import { poll } from '../polling.js';
-import { ImageStream } from '../streaming/image-stream.js';
-
-export interface ImageClient {
-  _request<T>(method: string, path: string, body?: any): Promise<T>;
-  _imageStream(path: string, body: any): ImageStream;
-}
+import type { ImageStream } from '../streaming/image-stream.js';
 
 export class Image {
-  private client: ImageClient;
+  private client: ClientInterface;
 
-  constructor(client: ImageClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 

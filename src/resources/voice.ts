@@ -1,14 +1,9 @@
-import type { VoiceTTSParams, VoiceSTTParams, VoiceSTTResponse } from '../types.js';
-
-export interface VoiceClient {
-  _requestMultipart<T>(path: string, formData: FormData): Promise<T>;
-  _requestMultipartRaw(path: string, formData: FormData): Promise<Response>;
-}
+import type { ClientInterface, VoiceTTSParams, VoiceSTTParams, VoiceSTTResponse } from '../types.js';
 
 export class Voice {
-  private client: VoiceClient;
+  private client: ClientInterface;
 
-  constructor(client: VoiceClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 

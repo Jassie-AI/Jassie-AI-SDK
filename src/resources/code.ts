@@ -1,19 +1,15 @@
 import type {
+  ClientInterface,
   CodeGenerateParams,
   CodeStreamParams,
   TextResponse,
 } from '../types.js';
 import type { JassieStream } from '../streaming/stream.js';
 
-export interface CodeClient {
-  _request<T>(method: string, path: string, body?: any): Promise<T>;
-  _stream(method: string, path: string, body: any): JassieStream;
-}
-
 export class Code {
-  private client: CodeClient;
+  private client: ClientInterface;
 
-  constructor(client: CodeClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 

@@ -1,18 +1,15 @@
 import type {
+  ClientInterface,
   VideoGenerateParams,
   VideoTaskResponse,
   PollOptions,
 } from '../types.js';
 import { poll } from '../polling.js';
 
-export interface VideoClient {
-  _request<T>(method: string, path: string, body?: any): Promise<T>;
-}
-
 export class Video {
-  private client: VideoClient;
+  private client: ClientInterface;
 
-  constructor(client: VideoClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 

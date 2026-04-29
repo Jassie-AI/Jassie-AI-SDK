@@ -1,18 +1,15 @@
 import type {
+  ClientInterface,
   MusicGenerateParams,
   MusicTaskResponse,
   PollOptions,
 } from '../types.js';
 import { poll } from '../polling.js';
 
-export interface MusicClient {
-  _request<T>(method: string, path: string, body?: any): Promise<T>;
-}
-
 export class Music {
-  private client: MusicClient;
+  private client: ClientInterface;
 
-  constructor(client: MusicClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 

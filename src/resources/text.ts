@@ -1,20 +1,15 @@
 import type {
+  ClientInterface,
   TextGenerateParams,
   TextStreamParams,
   TextResponse,
-  JassieChunk,
 } from '../types.js';
 import type { JassieStream } from '../streaming/stream.js';
 
-export interface TextClient {
-  _request<T>(method: string, path: string, body?: any): Promise<T>;
-  _stream(method: string, path: string, body: any): JassieStream;
-}
-
 export class Text {
-  private client: TextClient;
+  private client: ClientInterface;
 
-  constructor(client: TextClient) {
+  constructor(client: ClientInterface) {
     this.client = client;
   }
 
