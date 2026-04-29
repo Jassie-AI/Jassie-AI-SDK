@@ -107,10 +107,17 @@ export interface ImageGenerateParams {
   n?: number;
 }
 
+export interface VideoReference {
+  type: 'image' | 'video' | 'audio';
+  url: string;
+}
+
 export interface VideoGenerateParams {
   model: VideoModel;
   prompt: string;
   duration?: number;
+  references?: VideoReference[];
+  /** @deprecated Use `references` instead. Kept for jassie-vibe / jassie-motion. */
   reference?: string | string[];
   firstFrame?: string;
   lastFrame?: string;

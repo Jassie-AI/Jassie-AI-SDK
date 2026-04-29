@@ -264,9 +264,11 @@ for await (const event of stream) {
 |---|---|
 | `jassie-vibe` | 720p HD video generation |
 | `jassie-motion` | 1080p Full-HD video generation |
-| `jassie-cinema` | 2K cinematic video generation |
+| `jassie-cinema` | 1080p cinematic video generation with multimodal references |
 
 Video generation is **asynchronous** — `generate()` returns a `taskId` immediately.
+
+### Vibe & Motion
 
 ```typescript
 const task = await client.video.generate({
@@ -280,18 +282,58 @@ const result = await client.video.status(task.taskId);
 if (result.status === 'succeeded') console.log(result.videoUrl);
 ```
 
-### Parameters
-
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-vibe' \| 'jassie-motion' \| 'jassie-cinema'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p, `cinema` = 2K) |
+| `model` | `'jassie-vibe' \| 'jassie-motion'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
 | `prompt` | `string` | **Yes** | — | Video description |
-| `duration` | `number` | No | `5` | Duration in seconds (4–15 for `cinema`) |
+| `duration` | `number` | No | `5` | Duration in seconds (4-15 for `cinema` model)|
 | `reference` | `string \| string[]` | No | — | Reference image(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
 | `firstFrame` | `string` | No | — | Starting frame image URL |
 | `lastFrame` | `string` | No | — | Ending frame image URL |
 | `aspectRatio` | `string` | No | `'16:9'` | `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'`, `'21:9'`, `'adaptive'` |
 | `watermark` | `boolean` | No | `false` | Add watermark |
+
+### Cinema
+
+`jassie-cinema` supports multimodal references — pass images, videos, and audio clips to guide generation. Up to 9 images, 3 videos, and 3 audio clips per request.
+
+```typescript
+// Text-to-video
+const task = await client.video.generate({
+  model: 'jassie-cinema',
+  prompt: 'A cinematic drone shot over a mountain range at golden hour',
+  duration: 10,
+  aspectRatio: '21:9',
+});
+
+// With multimodal references
+const task = await client.video.generate({
+  model: 'jassie-cinema',
+  prompt: 'First-person POV product ad. Opening frame is Image 1, use Video 1 for camera framing, Audio 1 as background music.',
+  duration: 11,
+  aspectRatio: '16:9',
+  references: [
+    { type: 'image', url: 'https://example.com/product-shot.jpg' },
+    { type: 'image', url: 'https://example.com/brand-logo.jpg' },
+    { type: 'video', url: 'https://example.com/camera-reference.mp4' },
+    { type: 'audio', url: 'https://example.com/background-music.mp3' },
+  ],
+});
+
+const result = await client.video.status(task.taskId);
+if (result.status === 'succeeded') console.log(result.videoUrl);
+```
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `model` | `'jassie-cinema'` | **Yes** | — | Cinema model (1080p) |
+| `prompt` | `string` | **Yes** | — | Video description |
+| `duration` | `number` | No | `5` | Duration in seconds (up to 15) |
+| `references` | `VideoReference[]` | No | — | Multimodal references (see below) |
+| `aspectRatio` | `string` | No | `'16:9'` | `'21:9'`, `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'` |
+| `watermark` | `boolean` | No | `false` | Add watermark |
+
+**VideoReference:** `{ type: 'image' | 'video' | 'audio', url: string }`
 
 ### Response
 
@@ -441,7 +483,6 @@ stream.abort();
 | Type | Description |
 |---|---|
 | `text` | Generated content |
-| `thinking` | Model reasoning (chain-of-thought) |
 | `web` | Web search progress (has `query` field) |
 | `web_search` | Web search metadata |
 | `queued` | Request queued |
