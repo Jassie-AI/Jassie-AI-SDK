@@ -43,11 +43,11 @@ export class Image {
     taskId: string,
     options?: PollOptions,
   ): Promise<ImageTaskResponse> {
+    const path = options?.showcase
+      ? `/v2/generate-image/${taskId}?showcase=true`
+      : `/v2/generate-image/${taskId}`;
     const fetcher = () =>
-      this.client._request<ImageTaskResponse>(
-        'GET',
-        `/v2/generate-image/${taskId}`,
-      );
+      this.client._request<ImageTaskResponse>('GET', path);
 
     if (!options) {
       return fetcher();

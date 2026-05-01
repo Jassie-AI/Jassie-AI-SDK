@@ -104,6 +104,7 @@ export interface ImageGenerateParams {
   prompt: string;
   image?: string | string[];
   aspectRatio?: string;
+  showcase?: boolean;
 }
 
 export interface Reference {
@@ -232,6 +233,7 @@ export interface PollOptions {
   interval?: number;
   timeout?: number;
   onPoll?: (response: any) => void;
+  showcase?: boolean;
 }
 
 // ── Internal Transport Types ─────────────────────────────────────────────────

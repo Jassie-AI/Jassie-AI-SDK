@@ -34,11 +34,11 @@ export class Video {
     taskId: string,
     options?: PollOptions,
   ): Promise<VideoTaskResponse> {
+    const path = options?.showcase
+      ? `/v1/generate-video/${taskId}?showcase=true`
+      : `/v1/generate-video/${taskId}`;
     const fetcher = () =>
-      this.client._request<VideoTaskResponse>(
-        'GET',
-        `/v1/generate-video/${taskId}`,
-      );
+      this.client._request<VideoTaskResponse>('GET', path);
 
     if (!options) {
       return fetcher();

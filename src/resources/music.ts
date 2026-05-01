@@ -34,11 +34,11 @@ export class Music {
     taskId: string,
     options?: PollOptions,
   ): Promise<MusicTaskResponse> {
+    const path = options?.showcase
+      ? `/v1/generate-music/${taskId}?showcase=true`
+      : `/v1/generate-music/${taskId}`;
     const fetcher = () =>
-      this.client._request<MusicTaskResponse>(
-        'GET',
-        `/v1/generate-music/${taskId}`,
-      );
+      this.client._request<MusicTaskResponse>('GET', path);
 
     if (!options) {
       return fetcher();
