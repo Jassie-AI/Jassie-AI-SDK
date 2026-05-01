@@ -48,15 +48,6 @@ import JassieAI from 'jassie-ai';
 const client = new JassieAI({ apiKey: 'your-api-key' });
 ```
 
-### Constructor Options
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `apiKey` | `string` | — | **Required.** Your Jassie AI API key |
-| `baseURL` | `string` | `'https://api.jassie.ai'` | API base URL |
-| `timeout` | `number` | `60000` | Request timeout in milliseconds |
-| `maxRetries` | `number` | `2` | Max automatic retries on failure |
-
 ---
 
 ## Text Generation
