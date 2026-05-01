@@ -104,10 +104,9 @@ export interface ImageGenerateParams {
   prompt: string;
   image?: string | string[];
   aspectRatio?: string;
-  n?: number;
 }
 
-export interface VideoReference {
+export interface Reference {
   type: 'image' | 'video' | 'audio';
   url: string;
 }
@@ -116,12 +115,9 @@ export interface VideoGenerateParams {
   model: VideoModel;
   prompt: string;
   duration?: number;
-  references?: VideoReference[];
-  /** @deprecated Use `references` instead. Kept for jassie-vibe / jassie-motion. */
-  reference?: string | string[];
+  references?: Reference[];
   firstFrame?: string;
   lastFrame?: string;
-  watermark?: boolean;
   aspectRatio?: string;
 }
 
@@ -149,7 +145,12 @@ export interface VoiceSTTParams {
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
+  type: 'text' | 'error';
   content: string;
+  index?: number;
+  request_id?: string;
+  chunks?: number;
+  duration_seconds?: number;
   web_search?: {
     query: string;
   };

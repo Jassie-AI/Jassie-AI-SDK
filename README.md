@@ -144,7 +144,12 @@ const response = await client.text.generate({
 
 | Field | Type | Description |
 |---|---|---|
+| `type` | `'text' \| 'error'` | Response type |
 | `content` | `string` | The generated text |
+| `index` | `number` | Output index (starting at 0) |
+| `request_id` | `string` | Unique identifier for the request |
+| `chunks` | `number` | Total number of tokens generated |
+| `duration_seconds` | `number` | Time in seconds the model took to generate the response |
 | `web_search` | `{ query: string }` | Present when a web search was performed |
 
 ---
@@ -226,7 +231,6 @@ for await (const event of stream) {
 | `prompt` | `string` | **Yes** | — | Image description |
 | `image` | `string \| string[]` | No | — | Input image URL(s) for editing or composition (up to 14) |
 | `aspectRatio` | `string` | No | `'1:1'` | `'1:1'`, `'4:3'`, `'3:4'`, `'16:9'`, `'9:16'`, `'3:2'`, `'2:3'`, `'21:9'` |
-| `n` | `number` | No | `1` | Number of images to generate |
 
 ### Response
 
@@ -277,12 +281,11 @@ if (result.status === 'succeeded') console.log(result.videoUrl);
 |---|---|---|---|---|
 | `model` | `'jassie-vibe' \| 'jassie-motion'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
 | `prompt` | `string` | **Yes** | — | Video description |
-| `duration` | `number` | No | `5` | Duration in seconds (4-15 for `cinema` model)|
-| `reference` | `string \| string[]` | No | — | Reference image(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
+| `duration` | `number` | No | `5` | Duration in seconds |
+| `references` | `Reference[]` | No | — | Reference(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
 | `firstFrame` | `string` | No | — | Starting frame image URL |
 | `lastFrame` | `string` | No | — | Ending frame image URL |
 | `aspectRatio` | `string` | No | `'16:9'` | `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'`, `'21:9'`, `'adaptive'` |
-| `watermark` | `boolean` | No | `false` | Add watermark |
 
 ### Cinema
 
@@ -320,11 +323,10 @@ if (result.status === 'succeeded') console.log(result.videoUrl);
 | `model` | `'jassie-cinema'` | **Yes** | — | Cinema model (1080p) |
 | `prompt` | `string` | **Yes** | — | Video description |
 | `duration` | `number` | No | `5` | Duration in seconds (up to 15) |
-| `references` | `VideoReference[]` | No | — | Multimodal references (see below) |
+| `references` | `Reference[]` | No | — | Multimodal references (see below) |
 | `aspectRatio` | `string` | No | `'16:9'` | `'21:9'`, `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'` |
-| `watermark` | `boolean` | No | `false` | Add watermark |
 
-**VideoReference:** `{ type: 'image' | 'video' | 'audio', url: string }`
+**Reference:** `{ type: 'image' | 'video' | 'audio', url: string }`
 
 ### Response
 

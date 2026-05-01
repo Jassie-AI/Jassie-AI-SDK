@@ -21,6 +21,7 @@ export type {
   CodeGenerateParams,
   CodeStreamParams,
   ImageGenerateParams,
+  Reference,
   VideoGenerateParams,
   MusicGenerateParams,
   VoiceTTSParams,
