@@ -31,6 +31,8 @@ export type {
   VideoTaskResponse,
   MusicTaskResponse,
   VoiceSTTResponse,
+  VoicePreset,
+  VoiceListResponse,
   PollOptions,
   ImageStreamStatus,
   ImageStreamPreview,

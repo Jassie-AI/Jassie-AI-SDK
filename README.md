@@ -424,7 +424,7 @@ fs.writeFileSync('hello.mp3', Buffer.from(audio));
 | `model` | `'jassie-voice'` | **Yes** | — | Model to use |
 | `text` | `string` | **Yes** | — | Text to speak (max 5000 chars) |
 | `voiceId` | `string` | No | — | Pre-saved voice ID or preset name |
-| `sampleVoice` | `Blob \| File` | No | — | Audio sample for zero-shot cloning. Overrides `voiceId`. |
+| `sampleVoice` | `Blob \| File` | No | — | Audio sample for zero-shot cloning (2-30s, max 5MB). Overrides `voiceId`. |
 | `output_format` | `'mp3' \| 'wav' \| 'pcm' \| 'opus'` | No | `'mp3'` | Audio output format |
 
 ### Speech to Text

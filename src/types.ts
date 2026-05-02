@@ -134,7 +134,8 @@ export interface VoiceTTSParams {
   model: VoiceModel;
   text: string;
   voiceId?: string;
-  sampleVoice?: Blob | File;
+  /** Audio sample for zero-shot voice cloning (2-30s, max 5MB). Overrides voiceId. */
+  sampleVoice?: Blob | File | ArrayBuffer;
   output_format?: 'mp3' | 'wav' | 'pcm' | 'opus';
 }
 
@@ -184,6 +185,21 @@ export interface MusicTaskResponse {
 
 export interface VoiceSTTResponse {
   text: string;
+}
+
+// ── Voice Presets ───────────────────────────────────────────────────────────
+
+export interface VoicePreset {
+  id: string;
+  name: string;
+  description: string;
+  gender: 'male' | 'female';
+  isDefault: boolean;
+  previewUrl: string;
+}
+
+export interface VoiceListResponse {
+  voices: VoicePreset[];
 }
 
 // ── Image Streaming Events ───────────────────────────────────────────────────
