@@ -132,6 +132,71 @@ export class JassieAI {
     throw lastError ?? new JassieConnectionError('Request failed');
   }
 
+  /** Raw request with retry logic — returns the raw Response (for binary data like audio). */
+  async _requestRaw(method: string, path: string): Promise<Response> {
+    const url = `${this.baseURL}${path}`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await this.backoff(attempt, lastError);
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeout);
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: { 'Authorization': `Bearer ${this.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          let errorBody: any;
+          try {
+            errorBody = await response.json();
+          } catch {
+            errorBody = { error: response.statusText };
+          }
+
+          const err = JassieAPIError.fromResponse(response.status, errorBody);
+
+          if (response.status !== 429 && response.status < 500) {
+            throw err;
+          }
+          lastError = err;
+          continue;
+        }
+
+        return response;
+      } catch (err: any) {
+        clearTimeout(timer);
+
+        if (err instanceof JassieAPIError && err.status < 500 && err.status !== 429) {
+          throw err;
+        }
+
+        if (err?.name === 'AbortError') {
+          lastError = new JassieTimeoutError();
+          continue;
+        }
+
+        if (err instanceof JassieAPIError || err instanceof JassieRateLimitError) {
+          lastError = err;
+          continue;
+        }
+
+        lastError = new JassieConnectionError(err?.message ?? 'Request failed');
+        continue;
+      }
+    }
+
+    throw lastError ?? new JassieConnectionError('Request failed');
+  }
+
   /** Multipart form-data request with retry logic — returns parsed JSON */
   async _requestMultipart<T>(path: string, formData: FormData): Promise<T> {
     const url = `${this.baseURL}${path}`;

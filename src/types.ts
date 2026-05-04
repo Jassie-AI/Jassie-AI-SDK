@@ -2,6 +2,7 @@
 
 export interface ClientInterface {
   _request<T>(method: string, path: string, body?: any): Promise<T>;
+  _requestRaw(method: string, path: string): Promise<Response>;
   _requestMultipart<T>(path: string, formData: FormData): Promise<T>;
   _requestMultipartRaw(path: string, formData: FormData): Promise<Response>;
   _stream(method: string, path: string, body: any): import('./streaming/stream.js').JassieStream;

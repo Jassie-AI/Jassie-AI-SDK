@@ -16,9 +16,8 @@ export class Voice {
 
   /** Get the audio preview for a voice preset. Returns an ArrayBuffer of MP3 data. */
   async preview(voiceId: string): Promise<ArrayBuffer> {
-    const response = await this.client._request<Response>('GET', `/voices/${voiceId}/preview`);
-    // The raw response is returned when the content type is not JSON
-    return (response as unknown as Response).arrayBuffer();
+    const response = await this.client._requestRaw('GET', `/voices/${voiceId}/preview`);
+    return response.arrayBuffer();
   }
 
   /** Generate speech audio from text (TTS). Returns an ArrayBuffer of audio data. */
