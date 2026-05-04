@@ -136,9 +136,8 @@ export interface VoiceTTSParams {
   model: VoiceModel;
   text: string;
   voiceId?: string;
-  /** Audio sample for zero-shot voice cloning (2-30s, max 5MB). Overrides voiceId. */
-  sampleVoice?: Blob | File | ArrayBuffer;
-  output_format?: 'mp3' | 'wav' | 'pcm' | 'opus';
+  /** Instructions for speech style (e.g. tone, emotion, pacing). */
+  instruct?: string;
 }
 
 export interface VoiceSTTParams {
@@ -151,7 +150,6 @@ export interface VoiceChatParams {
   messages?: { role: string; content: string }[];
   speaker?: string;
   instruct?: string;
-  language?: string;
 }
 
 // ── Voice Chat Streaming Events ─────────────────────────────────────────────

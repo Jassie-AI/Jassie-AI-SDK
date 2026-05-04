@@ -25,14 +25,8 @@ export class Voice {
     const formData = new FormData();
     formData.append('model', params.model);
     formData.append('text', params.text);
-    if (params.output_format) formData.append('output_format', params.output_format);
     if (params.voiceId) formData.append('voiceId', params.voiceId);
-    if (params.sampleVoice) {
-      const sampleBlob = params.sampleVoice instanceof Blob
-        ? params.sampleVoice
-        : new Blob([params.sampleVoice], { type: 'audio/mpeg' });
-      formData.append('sample_voice', sampleBlob, 'sample.mp3');
-    }
+    if (params.instruct) formData.append('instruct', params.instruct);
 
     const response = await this.client._requestMultipartRaw('/v1/text-to-speech', formData);
     return response.arrayBuffer();
@@ -62,7 +56,6 @@ export class Voice {
     }
     if (params.speaker) formData.append('speaker', params.speaker);
     if (params.instruct) formData.append('instruct', params.instruct);
-    if (params.language) formData.append('language', params.language);
 
     return this.client._voiceChatStream('/v1/voice', formData);
   }

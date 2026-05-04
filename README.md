@@ -6,7 +6,7 @@
 
 Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API — built by [Airbin](https://airbin.app).
 
-Generate text, code, images, videos, music, and speech — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
+Generate text, code, images, videos, music, speech, and real-time voice calls — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
 
 - Zero runtime dependencies
 - Full TypeScript support with strict types
@@ -24,7 +24,7 @@ Generate text, code, images, videos, music, and speech — all from one SDK. Wor
 - [Image Generation](#image-generation)
 - [Video Generation](#video-generation)
 - [Music Generation](#music-generation)
-- [Voice (TTS & STT)](#voice-tts--stt)
+- [Voice (TTS, STT & Voice Call)](#voice-tts-stt--voice-call)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [React Native](#react-native)
@@ -395,11 +395,41 @@ if (result.status === 'completed') console.log(result.musicUrl);
 
 ---
 
-## Voice (TTS & STT)
+## Voice (TTS, STT & Voice Call)
 
 | Model | Description |
 |---|---|
-| `jassie-voice` | Text-to-speech and speech-to-text. Supports zero-shot voice cloning. |
+| `jassie-voice` | Text-to-speech, speech-to-text, and real-time voice call. Supports multiple voice presets. |
+
+### Voice Presets
+
+List available voice presets and preview them before use.
+
+```typescript
+// List all voices
+const voices = await client.voice.list();
+console.log(voices);
+// [{ id: 'Aiden', name: 'Aiden', description: 'Sunny American male, clear midrange', gender: 'male', isDefault: true }, ...]
+
+// Preview a voice (returns ArrayBuffer of MP3 audio)
+const preview = await client.voice.preview('Aiden');
+```
+
+**Available Voices:**
+
+| ID | Name | Gender |
+|---|---|---|
+| `Aiden` | Aiden | Male |
+| `Ryan` | Ryan | Male |
+| `Vivian` | Vivian | Female |
+| `Serena` | Serena | Female |
+| `Uncle_Fu` | Uncle Fu | Male |
+| `Dylan` | Dylan | Male |
+| `Eric` | Eric | Male |
+| `Ono_Anna` | Ono Anna | Female |
+| `Sohee` | Sohee | Female |
+
+> More voices coming soon.
 
 ### Text to Speech
 
@@ -409,9 +439,8 @@ Returns `Promise<ArrayBuffer>` — raw audio bytes.
 const audio = await client.voice.tts({
   model: 'jassie-voice',
   text: 'Hello, how are you?',
-  voiceId: 'brian',              // optional: preset voice
-  // sampleVoice: audioBlob,    // optional: clone from sample (2-30s, max 5MB)
-  output_format: 'mp3',         // optional: 'mp3' | 'wav' | 'pcm' | 'opus'
+  voiceId: 'Aiden',              // optional: preset voice ID from voice.list()
+  instruct: 'Speak in a warm, friendly tone',  // optional: style instructions
 });
 
 // Save to file (Node.js)
@@ -423,9 +452,8 @@ fs.writeFileSync('hello.mp3', Buffer.from(audio));
 |---|---|---|---|---|
 | `model` | `'jassie-voice'` | **Yes** | — | Model to use |
 | `text` | `string` | **Yes** | — | Text to speak (max 5000 chars) |
-| `voiceId` | `string` | No | — | Pre-saved voice ID or preset name |
-| `sampleVoice` | `Blob \| File` | No | — | Audio sample for zero-shot cloning (2-30s, max 5MB). Overrides `voiceId`. |
-| `output_format` | `'mp3' \| 'wav' \| 'pcm' \| 'opus'` | No | `'mp3'` | Audio output format |
+| `voiceId` | `string` | No | `'Aiden'` | Voice preset ID (use `voice.list()` to see available voices) |
+| `instruct` | `string` | No | — | Instructions for speech style (e.g. tone, emotion, pacing) |
 
 ### Speech to Text
 
@@ -443,58 +471,64 @@ const text = await client.voice.stt({
 | `model` | `'jassie-voice'` | **Yes** | Model to use |
 | `file` | `Blob \| File` | **Yes** | Audio file to transcribe |
 
----
+### Voice Call (Real-time Chat)
 
-## Streaming
-
-Text and code generation support real-time streaming via SSE.
+Send audio and get a streamed response with both text and audio. Under the hood, this combines three models in a single pipeline: **Jassie STT** transcribes the user's audio, **Jassie Pulse** (with web search set to `auto`) generates the response, and **Jassie TTS** synthesizes the reply into speech. Returns a `VoiceChatStream` — an async iterable of events.
 
 ```typescript
-const stream = client.text.generate({
-  model: 'jassie-pulse',
-  messages: [{ role: 'user', content: 'Hello' }],
-  stream: true,
+const stream = client.voice.chat({
+  audio: audioBlob,              // recorded audio (webm, mp3, wav, etc.)
+  messages: [                    // optional: conversation history
+    { role: 'user', content: 'Hello, how are you?' },
+  ],
+  speaker: 'Aiden',              // optional: voice preset ID for the response
+  instruct: 'Speak in a calm, reassuring tone',  // optional: speech style instructions
 });
 
-// Option 1: for-await
-for await (const chunk of stream) {
-  if (chunk.type === 'text') process.stdout.write(chunk.content);
+// Option 1: iterate events
+for await (const event of stream) {
+  if (event.type === 'text_chunk') process.stdout.write(event.text_chunk);
+  if (event.type === 'audio') playAudio(event.audio); // base64-encoded audio
+  if (event.type === 'done') console.log('\nFull response:', event.text);
 }
 
 // Option 2: callback
-await stream.eachText((text) => process.stdout.write(text));
+await stream.eachEvent((event) => {
+  if (event.type === 'text_chunk') process.stdout.write(event.text_chunk);
+});
 
-// Option 3: collect all at once
-const fullText = await stream.finalText();
+// Option 3: collect final result
+const result = await stream.finalResult();
+console.log(result.text);       // full response text
+console.log(result.user_text);  // transcribed user audio
 
 // Abort anytime
 stream.abort();
 ```
 
-### Chunk Types
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `audio` | `Blob \| File` | **Yes** | Recorded audio to send |
+| `messages` | `{ role: string, content: string }[]` | No | Conversation history for context |
+| `speaker` | `string` | No | Voice preset ID for the response audio |
+| `instruct` | `string` | No | Instructions for speech style (e.g. tone, emotion, pacing) |
 
-| Type | Description |
-|---|---|
-| `text` | Generated content |
-| `web` | Web search progress (has `query` field) |
-| `web_search` | Web search metadata |
-| `queued` | Request queued |
-| `error` | Error occurred |
+### Voice Chat Event Types
 
-### Stream Methods
-
-| Method | Returns | Description |
+| Type | Fields | Description |
 |---|---|---|
-| `eachText(cb)` | `Promise<void>` | Calls `cb(text)` for each text chunk |
-| `finalText()` | `Promise<string>` | Collects all text into a single string |
-| `abort()` | `void` | Cancels the stream |
+| `searching` | — | Server is processing the request |
+| `text_chunk` | `text_chunk` | Partial text being generated |
+| `audio` | `audio`, `sentence` | Base64-encoded audio chunk with corresponding text |
+| `done` | `text`, `user_text` | Stream complete — full response text and transcribed user audio |
+| `error` | `error` | Error message |
 
-### Image Stream Methods
+### Voice Chat Stream Methods
 
 | Method | Returns | Description |
 |---|---|---|
 | `eachEvent(cb)` | `Promise<void>` | Calls `cb(event)` for each event |
-| `finalResult()` | `Promise<ImageStreamEvent \| null>` | Returns the `completed` event |
+| `finalResult()` | `Promise<VoiceChatEvent \| null>` | Returns the `done` event |
 | `abort()` | `void` | Cancels the stream |
 
 ---
@@ -554,6 +588,18 @@ const imgStream = client.image.statusStream(task.taskId);
 await imgStream.eachEvent((event) => {
   if (event.type === 'preview') setPreview(event.imageUrl);
   if (event.type === 'completed') setFinalUrl(event.imageUrl);
+});
+
+// Voice call streaming
+const voiceStream = client.voice.chat({
+  audio: audioBlob,
+  speaker: 'Aiden',
+});
+
+await voiceStream.eachEvent((event) => {
+  if (event.type === 'text_chunk') setText((prev) => prev + event.text_chunk);
+  if (event.type === 'audio') playAudio(event.audio);
+  if (event.type === 'done') console.log('Done:', event.text);
 });
 ```
 
