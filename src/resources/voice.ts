@@ -1,4 +1,5 @@
-import type { ClientInterface, VoiceTTSParams, VoiceSTTParams, VoiceSTTResponse, VoicePreset, VoiceListResponse } from '../types.js';
+import type { ClientInterface, VoiceTTSParams, VoiceSTTParams, VoiceChatParams, VoiceSTTResponse, VoicePreset, VoiceListResponse } from '../types.js';
+import type { VoiceChatStream } from '../streaming/voice-chat-stream.js';
 
 export class Voice {
   private client: ClientInterface;
@@ -46,5 +47,24 @@ export class Voice {
 
     const result = await this.client._requestMultipart<VoiceSTTResponse>('/v1/speech-to-text', formData);
     return result.text;
+  }
+
+  /**
+   * Start a real-time voice chat session.
+   * Sends audio + conversation history to the server and returns
+   * a VoiceChatStream that yields events: searching, text_chunk, audio, done, error.
+   */
+  chat(params: VoiceChatParams): VoiceChatStream {
+    const formData = new FormData();
+    const audioBlob = params.audio instanceof Blob ? params.audio : new Blob([params.audio]);
+    formData.append('audio', audioBlob, 'recording.webm');
+    if (params.messages) {
+      formData.append('messages', JSON.stringify(params.messages));
+    }
+    if (params.speaker) formData.append('speaker', params.speaker);
+    if (params.instruct) formData.append('instruct', params.instruct);
+    if (params.language) formData.append('language', params.language);
+
+    return this.client._voiceChatStream('/v1/voice', formData);
   }
 }

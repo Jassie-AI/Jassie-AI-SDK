@@ -26,6 +26,7 @@ export type {
   MusicGenerateParams,
   VoiceTTSParams,
   VoiceSTTParams,
+  VoiceChatParams,
   TextResponse,
   ImageTaskResponse,
   VideoTaskResponse,
@@ -39,6 +40,12 @@ export type {
   ImageStreamCompleted,
   ImageStreamFailed,
   ImageStreamEvent,
+  VoiceChatSearching,
+  VoiceChatTextChunk,
+  VoiceChatAudio,
+  VoiceChatDone,
+  VoiceChatError,
+  VoiceChatEvent,
 } from './types.js';
 
 // Errors
@@ -54,3 +61,4 @@ export {
 // Streaming
 export { JassieStream } from './streaming/stream.js';
 export { ImageStream } from './streaming/image-stream.js';
+export { VoiceChatStream } from './streaming/voice-chat-stream.js';

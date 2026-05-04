@@ -1,4 +1,4 @@
-import type { JassieAIOptions, Platform, StreamTransportOptions } from './types.js';
+import type { JassieAIOptions, Platform, StreamTransportOptions, VoiceChatEvent } from './types.js';
 import {
   JassieAPIError,
   JassieAuthenticationError,
@@ -8,6 +8,7 @@ import {
 } from './errors.js';
 import { JassieStream } from './streaming/stream.js';
 import { ImageStream } from './streaming/image-stream.js';
+import { VoiceChatStream } from './streaming/voice-chat-stream.js';
 import { detectPlatform } from './streaming/platform.js';
 import { startFetchTransport } from './streaming/transport-fetch.js';
 import { startXHRTransport } from './streaming/transport-xhr.js';
@@ -349,6 +350,109 @@ export class JassieAI {
         if (!trimmed || trimmed === '[DONE]') return;
         try {
           stream._push(JSON.parse(trimmed));
+        } catch {}
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop()!;
+
+          for (const line of lines) {
+            parseLine(line);
+          }
+        }
+
+        // Flush remaining
+        if (buffer.trim()) {
+          for (const line of buffer.split('\n')) {
+            parseLine(line);
+          }
+        }
+
+        stream._end();
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          stream._end();
+        } else {
+          stream._error(
+            err instanceof Error ? err : new JassieConnectionError(String(err)),
+          );
+        }
+      }
+    })();
+
+    return stream;
+  }
+
+  /** Start a multipart SSE stream for voice chat, returns VoiceChatStream async iterable */
+  _voiceChatStream(path: string, formData: FormData): VoiceChatStream {
+    const stream = new VoiceChatStream();
+    const url = `${this.baseURL}${path}`;
+
+    (async () => {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${this.apiKey}` },
+          body: formData,
+          signal: stream.signal,
+        });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          stream._end();
+        } else {
+          stream._error(new JassieConnectionError(err?.message));
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        let errorBody: any;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = { error: response.statusText };
+        }
+        stream._error(JassieAPIError.fromResponse(response.status, errorBody));
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        stream._error(new JassieConnectionError('Response body is not readable'));
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const parseLine = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+        let data = trimmed;
+        if (data.startsWith('data: ')) data = data.slice(6);
+        if (!data || data === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(data);
+          let event: VoiceChatEvent | null = null;
+          if (parsed.done) {
+            event = { type: 'done', text: parsed.text, user_text: parsed.user_text };
+          } else if (parsed.searching) {
+            event = { type: 'searching' };
+          } else if (parsed.text_chunk !== undefined) {
+            event = { type: 'text_chunk', text_chunk: parsed.text_chunk };
+          } else if (parsed.audio) {
+            event = { type: 'audio', audio: parsed.audio, sentence: parsed.sentence };
+          } else if (parsed.error) {
+            event = { type: 'error', error: parsed.error };
+          }
+          if (event) stream._push(event);
         } catch {}
       };
 

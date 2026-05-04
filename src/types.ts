@@ -6,6 +6,7 @@ export interface ClientInterface {
   _requestMultipartRaw(path: string, formData: FormData): Promise<Response>;
   _stream(method: string, path: string, body: any): import('./streaming/stream.js').JassieStream;
   _imageStream(path: string, body: any): import('./streaming/image-stream.js').ImageStream;
+  _voiceChatStream(path: string, formData: FormData): import('./streaming/voice-chat-stream.js').VoiceChatStream;
 }
 
 // ── SDK Options ──────────────────────────────────────────────────────────────
@@ -143,6 +144,49 @@ export interface VoiceSTTParams {
   model: VoiceModel;
   file: Blob | File;
 }
+
+export interface VoiceChatParams {
+  audio: Blob | File;
+  messages?: { role: string; content: string }[];
+  speaker?: string;
+  instruct?: string;
+  language?: string;
+}
+
+// ── Voice Chat Streaming Events ─────────────────────────────────────────────
+
+export interface VoiceChatSearching {
+  type: 'searching';
+}
+
+export interface VoiceChatTextChunk {
+  type: 'text_chunk';
+  text_chunk: string;
+}
+
+export interface VoiceChatAudio {
+  type: 'audio';
+  audio: string;
+  sentence: string;
+}
+
+export interface VoiceChatDone {
+  type: 'done';
+  text: string;
+  user_text: string;
+}
+
+export interface VoiceChatError {
+  type: 'error';
+  error: string;
+}
+
+export type VoiceChatEvent =
+  | VoiceChatSearching
+  | VoiceChatTextChunk
+  | VoiceChatAudio
+  | VoiceChatDone
+  | VoiceChatError;
 
 // ── Response Types ───────────────────────────────────────────────────────────
 
