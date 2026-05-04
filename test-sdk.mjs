@@ -2,8 +2,8 @@
  * Jassie AI SDK — Comprehensive Test Suite
  *
  * Tests every feature: text (Pulse & Bolt), code, image (Pixel & Pixel-X),
- * video (Vibe, Motion, Cinema), music (Beat), voice (TTS & STT),
- * web search, vision (image & video), streaming, error handling.
+ * video (Vibe, Motion, Cinema), music (Beat), voice (list, preview, TTS, STT,
+ * voice call/chat), web search, vision (image & video), streaming, error handling.
  *
  * Usage:
  *   node --env-file=.env test-sdk.mjs
@@ -777,21 +777,64 @@ async function testMusicGenerateWithLyrics() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. VOICE — JASSIE VOICE (TTS & STT)
+// 7. VOICE — JASSIE VOICE (TTS, STT & VOICE CALL)
 // ═══════════════════════════════════════════════════════════════════════════
 
 let ttsAudioBuffer = null; // shared between TTS and STT round-trip
+let resolvedVoiceId = null; // fetched from voice.list(), used across TTS/STT/chat tests
+
+async function testVoiceList() {
+  section('7a. Voice — list available voices');
+  try {
+    const voices = await client.voice.list();
+    if (Array.isArray(voices) && voices.length > 0) {
+      const names = voices.map((v) => v.name || v.id).join(', ');
+      pass('voice.list', `${voices.length} voices: ${names.slice(0, 120)}`);
+      // Pick the default voice, or fall back to the first one
+      const defaultVoice = voices.find((v) => v.isDefault) || voices[0];
+      resolvedVoiceId = defaultVoice.id || defaultVoice.name;
+      console.log(`    → using voiceId "${resolvedVoiceId}" for subsequent tests`);
+    } else {
+      fail('voice.list', new Error(`Unexpected response: ${JSON.stringify(voices)}`));
+    }
+  } catch (err) {
+    fail('voice.list', err);
+  }
+}
+
+async function testVoicePreview() {
+  section('7b. Voice — preview voice preset');
+  if (!resolvedVoiceId) {
+    fail('voice.preview', new Error('No voiceId from voice.list — skipping'));
+    return;
+  }
+  try {
+    const audioBuffer = await client.voice.preview(resolvedVoiceId);
+    if (audioBuffer && audioBuffer.byteLength > 0) {
+      pass('voice.preview', `received ${audioBuffer.byteLength} bytes of preview audio for "${resolvedVoiceId}"`);
+    } else {
+      fail('voice.preview', new Error('Empty audio buffer returned'));
+    }
+  } catch (err) {
+    fail('voice.preview', err);
+  }
+}
 
 async function testVoiceTTS() {
-  section('7a. Voice — TTS (text-to-speech)');
+  section('7c. Voice — TTS with voiceId');
+  if (!resolvedVoiceId) {
+    fail('voice.tts', new Error('No voiceId from voice.list — skipping'));
+    return;
+  }
   try {
     const audioBuffer = await client.voice.tts({
       model: 'jassie-voice',
       text: 'Hello, this is a test of the Jassie AI text to speech system.',
+      voiceId: resolvedVoiceId,
       output_format: 'mp3',
     });
     if (audioBuffer && audioBuffer.byteLength > 0) {
-      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio`);
+      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio (voiceId: "${resolvedVoiceId}")`);
       ttsAudioBuffer = audioBuffer; // save for STT test
     } else {
       fail('voice.tts', new Error('Empty audio buffer returned'));
@@ -802,7 +845,7 @@ async function testVoiceTTS() {
 }
 
 async function testVoiceTTSWithSample() {
-  section('7b. Voice — TTS with voice cloning (sampleVoice)');
+  section('7d. Voice — TTS with voice cloning (sampleVoice)');
   if (!ttsAudioBuffer) {
     fail('voice.tts (clone)', new Error('No TTS audio from previous test — skipping'));
     return;
@@ -830,14 +873,13 @@ async function testVoiceTTSWithSample() {
 }
 
 async function testVoiceSTT() {
-  section('7c. Voice — STT (speech-to-text, round-trip)');
+  section('7e. Voice — STT (speech-to-text, round-trip)');
   if (!ttsAudioBuffer) {
     fail('voice.stt', new Error('No TTS audio from previous test — skipping'));
     return;
   }
   try {
     const audioBlob = new Blob([ttsAudioBuffer], { type: 'audio/mp3' });
-    // Attach a .name for the SDK's FormData append
     const audioFile = new File([audioBlob], 'test-audio.mp3', { type: 'audio/mp3' });
     const text = await client.voice.stt({
       model: 'jassie-voice',
@@ -850,6 +892,62 @@ async function testVoiceSTT() {
     }
   } catch (err) {
     fail('voice.stt', err);
+  }
+}
+
+async function testVoiceChat() {
+  section('7f. Voice — voice call (chat) streaming');
+  if (!ttsAudioBuffer) {
+    fail('voice.chat', new Error('No TTS audio from previous test — skipping'));
+    return;
+  }
+  try {
+    const audioBlob = new Blob([ttsAudioBuffer], { type: 'audio/webm' });
+    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+    const chatParams = {
+      audio: audioFile,
+      messages: [
+        { role: 'user', content: 'Hello, how are you?' },
+      ],
+      language: 'en',
+    };
+    if (resolvedVoiceId) {
+      chatParams.speaker = resolvedVoiceId;
+    }
+
+    const stream = client.voice.chat(chatParams);
+    const events = [];
+    let textChunks = '';
+    let doneEvent = null;
+
+    for await (const event of stream) {
+      events.push(event);
+      if (event.type === 'text_chunk') {
+        textChunks += event.text_chunk;
+      } else if (event.type === 'done') {
+        doneEvent = event;
+      } else if (event.type === 'error') {
+        fail('voice.chat', new Error(`Server error: ${event.error}`));
+        return;
+      }
+    }
+
+    if (events.length > 0) {
+      const types = [...new Set(events.map((e) => e.type))].join(', ');
+      pass('voice.chat streaming', `${events.length} events received (types: ${types})`);
+    } else {
+      fail('voice.chat streaming', new Error('No events received'));
+    }
+
+    if (doneEvent) {
+      pass('voice.chat done', `text: "${(doneEvent.text || '').slice(0, 80)}…", user_text: "${(doneEvent.user_text || '').slice(0, 50)}"`);
+    } else if (textChunks.length > 0) {
+      pass('voice.chat text', `collected text: "${textChunks.slice(0, 80)}…"`);
+    } else {
+      fail('voice.chat result', new Error('No done event or text chunks received'));
+    }
+  } catch (err) {
+    fail('voice.chat', err);
   }
 }
 
@@ -996,11 +1094,14 @@ async function run() {
   await withRetry(() => testMusicStatusPolling(musicTaskId));
   await withRetry(testMusicGenerateWithLyrics);
 
-  // ── 7. Voice — Jassie Voice (TTS & STT) ──
-  header('7. VOICE — JASSIE VOICE (TTS & STT)');
+  // ── 7. Voice — Jassie Voice (TTS, STT & Voice Call) ──
+  header('7. VOICE — JASSIE VOICE (TTS, STT & VOICE CALL)');
+  await withRetry(testVoiceList);
+  await withRetry(testVoicePreview);
   await withRetry(testVoiceTTS);
   await withRetry(testVoiceTTSWithSample);
   await withRetry(testVoiceSTT);
+  await withRetry(testVoiceChat);
 
   // ── 8. Error Handling ──
   header('8. ERROR HANDLING');
