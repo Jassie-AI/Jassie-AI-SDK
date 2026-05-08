@@ -512,6 +512,12 @@ export class JassieAI {
             event = { type: 'searching' };
           } else if (parsed.text_chunk !== undefined) {
             event = { type: 'text_chunk', text_chunk: parsed.text_chunk };
+          } else if (parsed.audio_start) {
+            event = { type: 'audio_start', sentence: parsed.sentence, sample_rate: parsed.sample_rate };
+          } else if (parsed.audio_chunk) {
+            event = { type: 'audio_chunk', audio_chunk: parsed.audio_chunk };
+          } else if (parsed.audio_end) {
+            event = { type: 'audio_end', sentence: parsed.sentence };
           } else if (parsed.audio) {
             event = { type: 'audio', audio: parsed.audio, sentence: parsed.sentence };
           } else if (parsed.error) {

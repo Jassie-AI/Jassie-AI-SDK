@@ -2,8 +2,8 @@
  * Jassie AI SDK — Comprehensive Test Suite
  *
  * Tests every feature: text (Pulse & Bolt), code, image (Pixel & Pixel-X),
- * video (Vibe, Motion, Cinema), music (Beat), voice (list, preview, TTS,
- * STT, voice call), web search, vision (image & video), streaming, error handling.
+ * video (Vibe, Motion, Cinema), music (Beat), voice (TTS, STT, voice call),
+ * web search, vision (image & video), streaming, error handling.
  *
  * Usage:
  *   node --env-file=.env test-sdk.mjs
@@ -781,60 +781,18 @@ async function testMusicGenerateWithLyrics() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 let ttsAudioBuffer = null; // shared between TTS and STT round-trip
-let resolvedVoiceId = null; // fetched from voice.list(), used across TTS/STT/chat tests
-
-async function testVoiceList() {
-  section('7a. Voice — list available voices');
-  try {
-    const voices = await client.voice.list();
-    if (Array.isArray(voices) && voices.length > 0) {
-      const names = voices.map((v) => v.name || v.id).join(', ');
-      pass('voice.list', `${voices.length} voices: ${names.slice(0, 120)}`);
-      // Pick the default voice, or fall back to the first one
-      const defaultVoice = voices.find((v) => v.isDefault) || voices[0];
-      resolvedVoiceId = defaultVoice.id || defaultVoice.name;
-      console.log(`    → using voiceId "${resolvedVoiceId}" for subsequent tests`);
-    } else {
-      fail('voice.list', new Error(`Unexpected response: ${JSON.stringify(voices)}`));
-    }
-  } catch (err) {
-    fail('voice.list', err);
-  }
-}
-
-async function testVoicePreview() {
-  section('7b. Voice — preview voice preset');
-  if (!resolvedVoiceId) {
-    fail('voice.preview', new Error('No voiceId from voice.list — skipping'));
-    return;
-  }
-  try {
-    const audioBuffer = await client.voice.preview(resolvedVoiceId);
-    if (audioBuffer && audioBuffer.byteLength > 0) {
-      pass('voice.preview', `received ${audioBuffer.byteLength} bytes of preview audio for "${resolvedVoiceId}"`);
-    } else {
-      fail('voice.preview', new Error('Empty audio buffer returned'));
-    }
-  } catch (err) {
-    fail('voice.preview', err);
-  }
-}
 
 async function testVoiceTTS() {
-  section('7c. Voice — TTS with voiceId');
-  if (!resolvedVoiceId) {
-    fail('voice.tts', new Error('No voiceId from voice.list — skipping'));
-    return;
-  }
+  section('7a. Voice — TTS with instruct');
   try {
     const audioBuffer = await client.voice.tts({
       model: 'jassie-voice',
       text: 'Hello, this is a test of the Jassie AI text to speech system.',
-      voiceId: resolvedVoiceId,
-      output_format: 'mp3',
+      instruct: 'A warm, friendly female voice with a calm tone',
+      seed: 42,
     });
     if (audioBuffer && audioBuffer.byteLength > 0) {
-      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio (voiceId: "${resolvedVoiceId}")`);
+      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio`);
       ttsAudioBuffer = audioBuffer; // save for STT test
     } else {
       fail('voice.tts', new Error('Empty audio buffer returned'));
@@ -845,7 +803,7 @@ async function testVoiceTTS() {
 }
 
 async function testVoiceSTT() {
-  section('7d. Voice — STT (speech-to-text, round-trip)');
+  section('7b. Voice — STT (speech-to-text, round-trip)');
   if (!ttsAudioBuffer) {
     fail('voice.stt', new Error('No TTS audio from previous test — skipping'));
     return;
@@ -868,7 +826,7 @@ async function testVoiceSTT() {
 }
 
 async function testVoiceChat() {
-  section('7e. Voice — voice call (chat) streaming');
+  section('7c. Voice — voice call (chat) streaming');
   if (!ttsAudioBuffer) {
     fail('voice.chat', new Error('No TTS audio from previous test — skipping'));
     return;
@@ -881,11 +839,9 @@ async function testVoiceChat() {
       messages: [
         { role: 'user', content: 'Hello, how are you?' },
       ],
-      language: 'en',
+      instruct: 'A warm, friendly voice with a calm tone',
+      seed: 42,
     };
-    if (resolvedVoiceId) {
-      chatParams.speaker = resolvedVoiceId;
-    }
 
     const stream = client.voice.chat(chatParams);
     const events = [];
@@ -1068,8 +1024,6 @@ async function run() {
 
   // ── 7. Voice — Jassie Voice (TTS, STT & Voice Call) ──
   header('7. VOICE — JASSIE VOICE (TTS, STT & VOICE CALL)');
-  await withRetry(testVoiceList);
-  await withRetry(testVoicePreview);
   await withRetry(testVoiceTTS);
   await withRetry(testVoiceSTT);
   await withRetry(testVoiceChat);

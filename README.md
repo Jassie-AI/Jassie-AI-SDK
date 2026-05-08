@@ -399,48 +399,20 @@ if (result.status === 'completed') console.log(result.musicUrl);
 
 | Model | Description |
 |---|---|
-| `jassie-voice` | Text-to-speech, speech-to-text, and real-time voice call. Supports multiple voice presets. |
-
-### Voice Presets
-
-List available voice presets and preview them before use.
-
-```typescript
-// List all voices
-const voices = await client.voice.list();
-console.log(voices);
-// [{ id: 'Aiden', name: 'Aiden', description: 'Sunny American male, clear midrange', gender: 'male', isDefault: true }, ...]
-
-// Preview a voice (returns ArrayBuffer of MP3 audio)
-const preview = await client.voice.preview('Aiden');
-```
-
-**Available Voices:**
-
-| ID | Name | Gender |
-|---|---|---|
-| `Aiden` | Aiden | Male |
-| `Ryan` | Ryan | Male |
-| `Vivian` | Vivian | Female |
-| `Serena` | Serena | Female |
-| `Uncle_Fu` | Uncle Fu | Male |
-| `Dylan` | Dylan | Male |
-| `Eric` | Eric | Male |
-| `Ono_Anna` | Ono Anna | Female |
-| `Sohee` | Sohee | Female |
-
-> More voices coming soon.
+| `jassie-voice` | Text-to-speech, speech-to-text, and real-time voice call. Uses VoiceDesign — describe any voice via the `instruct` parameter. |
 
 ### Text to Speech
 
-Returns `Promise<ArrayBuffer>` — raw audio bytes.
+Returns `Promise<ArrayBuffer>` — raw audio bytes (MP3).
+
+The voice is controlled entirely through the `instruct` parameter. Describe the voice you want — gender, tone, accent, pacing, emotion — and the model generates it.
 
 ```typescript
 const audio = await client.voice.tts({
   model: 'jassie-voice',
   text: 'Hello, how are you?',
-  voiceId: 'Aiden',              // optional: preset voice ID from voice.list()
-  instruct: 'Speak in a warm, friendly tone',  // optional: style instructions
+  instruct: 'A warm male voice with an American accent, speaking in a friendly tone',
+  seed: 42,
 });
 
 // Save to file (Node.js)
@@ -452,8 +424,8 @@ fs.writeFileSync('hello.mp3', Buffer.from(audio));
 |---|---|---|---|---|
 | `model` | `'jassie-voice'` | **Yes** | — | Model to use |
 | `text` | `string` | **Yes** | — | Text to speak (max 5000 chars) |
-| `voiceId` | `string` | No | `'Aiden'` | Voice preset ID (use `voice.list()` to see available voices) |
-| `instruct` | `string` | No | — | Instructions for speech style (e.g. tone, emotion, pacing) |
+| `instruct` | `string` | No | — | Voice and style description (e.g. "A calm female voice with a British accent") |
+| `seed` | `number` | No | `42` | Random seed for voice consistency. Same seed + same instruct = consistent voice. |
 
 ### Speech to Text
 
@@ -473,7 +445,9 @@ const text = await client.voice.stt({
 
 ### Voice Call (Real-time Chat)
 
-Send audio and get a streamed response with both text and audio. Under the hood, this combines three models in a single pipeline: **Jassie STT** transcribes the user's audio, **Jassie Pulse** (with web search set to `auto`) generates the response, and **Jassie TTS** synthesizes the reply into speech. Returns a `VoiceChatStream` — an async iterable of events.
+Send audio and get a streamed response with both text and audio. Under the hood, this combines three models in a single pipeline: **Jassie STT** transcribes the user's audio, **Jassie Pulse** (with web search set to `auto`) generates the response, and **Jassie TTS** synthesizes the reply into streamed speech. Returns a `VoiceChatStream` — an async iterable of events.
+
+Audio is streamed as raw PCM int16 chunks for low-latency playback. Each sentence produces an `audio_start` event, followed by one or more `audio_chunk` events containing base64-encoded PCM data, and finally an `audio_end` event. The legacy `audio` event (complete base64 MP3 per sentence) may appear as a fallback.
 
 ```typescript
 const stream = client.voice.chat({
@@ -481,14 +455,16 @@ const stream = client.voice.chat({
   messages: [                    // optional: conversation history
     { role: 'user', content: 'Hello, how are you?' },
   ],
-  speaker: 'Aiden',              // optional: voice preset ID for the response
-  instruct: 'Speak in a calm, reassuring tone',  // optional: speech style instructions
+  instruct: 'A calm, reassuring male voice',  // optional: voice description
+  seed: 42,                      // optional: consistent voice across calls
 });
 
 // Option 1: iterate events
 for await (const event of stream) {
   if (event.type === 'text_chunk') process.stdout.write(event.text_chunk);
-  if (event.type === 'audio') playAudio(event.audio); // base64-encoded audio
+  if (event.type === 'audio_start') console.log('Playing:', event.sentence);
+  if (event.type === 'audio_chunk') playPCMChunk(event.audio_chunk); // base64 PCM int16
+  if (event.type === 'audio_end') console.log('Sentence done');
   if (event.type === 'done') console.log('\nFull response:', event.text);
 }
 
@@ -510,16 +486,19 @@ stream.abort();
 |---|---|---|---|
 | `audio` | `Blob \| File` | **Yes** | Recorded audio to send |
 | `messages` | `{ role: string, content: string }[]` | No | Conversation history for context |
-| `speaker` | `string` | No | Voice preset ID for the response audio |
-| `instruct` | `string` | No | Instructions for speech style (e.g. tone, emotion, pacing) |
+| `instruct` | `string` | No | Voice and style description (e.g. "A warm female voice with a British accent") |
+| `seed` | `number` | No | Random seed for voice consistency (default: `42`) |
 
 ### Voice Chat Event Types
 
 | Type | Fields | Description |
 |---|---|---|
-| `searching` | — | Server is processing the request |
+| `searching` | — | Server is performing a web search |
 | `text_chunk` | `text_chunk` | Partial text being generated |
-| `audio` | `audio`, `sentence` | Base64-encoded audio chunk with corresponding text |
+| `audio_start` | `sentence`, `sample_rate` | Marks the beginning of a sentence's streamed audio (PCM int16, typically 24000 Hz) |
+| `audio_chunk` | `audio_chunk` | Base64-encoded PCM int16 audio data |
+| `audio_end` | `sentence` | Marks the end of a sentence's streamed audio |
+| `audio` | `audio`, `sentence` | Fallback: complete base64-encoded MP3 audio for a sentence |
 | `done` | `text`, `user_text` | Stream complete — full response text and transcribed user audio |
 | `error` | `error` | Error message |
 
@@ -593,12 +572,13 @@ await imgStream.eachEvent((event) => {
 // Voice call streaming
 const voiceStream = client.voice.chat({
   audio: audioBlob,
-  speaker: 'Aiden',
+  instruct: 'A friendly, natural male voice',
 });
 
 await voiceStream.eachEvent((event) => {
   if (event.type === 'text_chunk') setText((prev) => prev + event.text_chunk);
-  if (event.type === 'audio') playAudio(event.audio);
+  if (event.type === 'audio_start') console.log('Playing:', event.sentence);
+  if (event.type === 'audio_chunk') playPCMChunk(event.audio_chunk);
   if (event.type === 'done') console.log('Done:', event.text);
 });
 ```

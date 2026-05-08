@@ -135,9 +135,10 @@ export interface MusicGenerateParams {
 export interface VoiceTTSParams {
   model: VoiceModel;
   text: string;
-  voiceId?: string;
-  /** Instructions for speech style (e.g. tone, emotion, pacing). */
+  /** Instructions for voice and speech style (e.g. "A warm male voice with a calm tone"). */
   instruct?: string;
+  /** Random seed for voice consistency. Use the same seed to get a consistent voice across requests. */
+  seed?: number;
 }
 
 export interface VoiceSTTParams {
@@ -148,8 +149,10 @@ export interface VoiceSTTParams {
 export interface VoiceChatParams {
   audio: Blob | File;
   messages?: { role: string; content: string }[];
-  speaker?: string;
+  /** Instructions for voice and speech style (e.g. "A warm male voice with a calm tone"). */
   instruct?: string;
+  /** Random seed for voice consistency. Use the same seed to get a consistent voice across requests. */
+  seed?: number;
 }
 
 // ── Voice Chat Streaming Events ─────────────────────────────────────────────
@@ -169,6 +172,22 @@ export interface VoiceChatAudio {
   sentence: string;
 }
 
+export interface VoiceChatAudioStart {
+  type: 'audio_start';
+  sentence: string;
+  sample_rate: number;
+}
+
+export interface VoiceChatAudioChunk {
+  type: 'audio_chunk';
+  audio_chunk: string;
+}
+
+export interface VoiceChatAudioEnd {
+  type: 'audio_end';
+  sentence: string;
+}
+
 export interface VoiceChatDone {
   type: 'done';
   text: string;
@@ -184,6 +203,9 @@ export type VoiceChatEvent =
   | VoiceChatSearching
   | VoiceChatTextChunk
   | VoiceChatAudio
+  | VoiceChatAudioStart
+  | VoiceChatAudioChunk
+  | VoiceChatAudioEnd
   | VoiceChatDone
   | VoiceChatError;
 
@@ -228,21 +250,6 @@ export interface MusicTaskResponse {
 
 export interface VoiceSTTResponse {
   text: string;
-}
-
-// ── Voice Presets ───────────────────────────────────────────────────────────
-
-export interface VoicePreset {
-  id: string;
-  name: string;
-  description: string;
-  gender: 'male' | 'female';
-  isDefault: boolean;
-  previewUrl: string;
-}
-
-export interface VoiceListResponse {
-  voices: VoicePreset[];
 }
 
 // ── Image Streaming Events ───────────────────────────────────────────────────
