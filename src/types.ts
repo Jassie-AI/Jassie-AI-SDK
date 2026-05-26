@@ -2,12 +2,11 @@
 
 export interface ClientInterface {
   _request<T>(method: string, path: string, body?: any): Promise<T>;
-  _requestRaw(method: string, path: string): Promise<Response>;
+  _requestRaw(method: string, path: string, body?: any): Promise<Response>;
   _requestMultipart<T>(path: string, formData: FormData): Promise<T>;
   _requestMultipartRaw(path: string, formData: FormData): Promise<Response>;
   _stream(method: string, path: string, body: any): import('./streaming/stream.js').JassieStream;
   _imageStream(path: string, body: any): import('./streaming/image-stream.js').ImageStream;
-  _voiceChatStream(path: string, formData: FormData): import('./streaming/voice-chat-stream.js').VoiceChatStream;
 }
 
 // ── SDK Options ──────────────────────────────────────────────────────────────
@@ -29,6 +28,7 @@ export interface Message {
   content: string;
   image?: string | string[];
   video?: string | string[];
+  audio?: string;
 }
 
 // ── Models ───────────────────────────────────────────────────────────────────
@@ -38,8 +38,6 @@ export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x';
 export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema';
 export type MusicModel = 'jassie-beat';
-export type VoiceModel = 'jassie-voice';
-
 // ── Usage ────────────────────────────────────────────────────────────────────
 
 export interface Usage {
@@ -51,9 +49,11 @@ export interface Usage {
 // ── Streaming Chunk ──────────────────────────────────────────────────────────
 
 export interface JassieChunk {
-  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error';
+  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'audio' | 'start' | 'done' | 'queue_position';
   content: string;
   done: boolean;
+  data?: string;
+  fallback?: boolean;
   index?: number;
   chunks?: number;
   position?: number;
@@ -62,6 +62,10 @@ export interface JassieChunk {
   query?: string;
   usage?: Usage;
 }
+
+// ── Speakers ─────────────────────────────────────────────────────────────────
+
+export type Speaker = 'ethan' | 'chelsie' | 'aiden';
 
 // ── Request Params ───────────────────────────────────────────────────────────
 
@@ -132,82 +136,14 @@ export interface MusicGenerateParams {
   duration: number;
 }
 
-export interface VoiceTTSParams {
-  model: VoiceModel;
-  text: string;
-  /** Instructions for voice and speech style (e.g. "A warm male voice with a calm tone"). */
-  instruct?: string;
-  /** Random seed for voice consistency. Use the same seed to get a consistent voice across requests. */
-  seed?: number;
+export interface ConversationParams {
+  messages: Message[];
+  maxTokens?: number;
+  text?: boolean;
+  speaker?: Speaker;
+  temperature?: number;
+  web?: 'auto' | 'always' | null;
 }
-
-export interface VoiceSTTParams {
-  model: VoiceModel;
-  file: Blob | File;
-}
-
-export interface VoiceChatParams {
-  audio: Blob | File;
-  messages?: { role: string; content: string }[];
-  /** Instructions for voice and speech style (e.g. "A warm male voice with a calm tone"). */
-  instruct?: string;
-  /** Random seed for voice consistency. Use the same seed to get a consistent voice across requests. */
-  seed?: number;
-}
-
-// ── Voice Chat Streaming Events ─────────────────────────────────────────────
-
-export interface VoiceChatSearching {
-  type: 'searching';
-}
-
-export interface VoiceChatTextChunk {
-  type: 'text_chunk';
-  text_chunk: string;
-}
-
-export interface VoiceChatAudio {
-  type: 'audio';
-  audio: string;
-  sentence: string;
-}
-
-export interface VoiceChatAudioStart {
-  type: 'audio_start';
-  sentence: string;
-  sample_rate: number;
-}
-
-export interface VoiceChatAudioChunk {
-  type: 'audio_chunk';
-  audio_chunk: string;
-}
-
-export interface VoiceChatAudioEnd {
-  type: 'audio_end';
-  sentence: string;
-}
-
-export interface VoiceChatDone {
-  type: 'done';
-  text: string;
-  user_text: string;
-}
-
-export interface VoiceChatError {
-  type: 'error';
-  error: string;
-}
-
-export type VoiceChatEvent =
-  | VoiceChatSearching
-  | VoiceChatTextChunk
-  | VoiceChatAudio
-  | VoiceChatAudioStart
-  | VoiceChatAudioChunk
-  | VoiceChatAudioEnd
-  | VoiceChatDone
-  | VoiceChatError;
 
 // ── Response Types ───────────────────────────────────────────────────────────
 
@@ -246,10 +182,6 @@ export interface MusicTaskResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   musicUrl: string | null;
   expiresOn: string | null;
-}
-
-export interface VoiceSTTResponse {
-  text: string;
 }
 
 // ── Image Streaming Events ───────────────────────────────────────────────────

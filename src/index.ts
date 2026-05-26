@@ -13,9 +13,10 @@ export type {
   ImageModel,
   VideoModel,
   MusicModel,
-  VoiceModel,
   Usage,
   JassieChunk,
+  Speaker,
+  ConversationParams,
   TextGenerateParams,
   TextStreamParams,
   CodeGenerateParams,
@@ -24,29 +25,16 @@ export type {
   Reference,
   VideoGenerateParams,
   MusicGenerateParams,
-  VoiceTTSParams,
-  VoiceSTTParams,
-  VoiceChatParams,
   TextResponse,
   ImageTaskResponse,
   VideoTaskResponse,
   MusicTaskResponse,
-  VoiceSTTResponse,
   PollOptions,
   ImageStreamStatus,
   ImageStreamPreview,
   ImageStreamCompleted,
   ImageStreamFailed,
   ImageStreamEvent,
-  VoiceChatSearching,
-  VoiceChatTextChunk,
-  VoiceChatAudio,
-  VoiceChatAudioStart,
-  VoiceChatAudioChunk,
-  VoiceChatAudioEnd,
-  VoiceChatDone,
-  VoiceChatError,
-  VoiceChatEvent,
 } from './types.js';
 
 // Errors
@@ -62,4 +50,6 @@ export {
 // Streaming
 export { JassieStream } from './streaming/stream.js';
 export { ImageStream } from './streaming/image-stream.js';
-export { VoiceChatStream } from './streaming/voice-chat-stream.js';
+
+// Resources
+export { Conversation } from './resources/conversation.js';

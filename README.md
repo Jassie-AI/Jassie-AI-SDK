@@ -6,7 +6,7 @@
 
 Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API — built by [Airbin](https://airbin.app).
 
-Generate text, code, images, videos, music, speech, and real-time voice calls — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
+Generate text, code, images, videos, music, and real-time voice conversations — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
 
 - Zero runtime dependencies
 - Full TypeScript support with strict types
@@ -24,7 +24,7 @@ Generate text, code, images, videos, music, speech, and real-time voice calls �
 - [Image Generation](#image-generation)
 - [Video Generation](#video-generation)
 - [Music Generation](#music-generation)
-- [Voice (TTS, STT & Voice Call)](#voice-tts-stt--voice-call)
+- [Omni Conversation](#omni-conversation)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [React Native](#react-native)
@@ -94,13 +94,13 @@ for await (const chunk of stream) {
 | `temperature` | `number` | No | `0.7` | Randomness (0 = deterministic, 2 = creative) |
 | `web` | `'auto' \| 'always' \| null` | No | `null` | Web search mode |
 
-**Message format:** `{ role: 'system' | 'user' | 'assistant', content: string, image?: string | string[], video?: string | string[] }`
+**Message format:** `{ role: 'system' | 'user' | 'assistant', content: string, image?: string | string[], video?: string | string[], audio?: string }`
 
-> **Note:** The `image` and `video` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
+> **Note:** The `image`, `video`, and `audio` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
 
-### Vision (Bolt only)
+### Multimodal Input (Bolt only)
 
-`jassie-bolt` can analyze images and videos passed in messages.
+`jassie-bolt` can analyze images, videos, and audio passed in messages.
 
 ```typescript
 // Single image
@@ -138,7 +138,34 @@ const response = await client.text.generate({
     },
   ],
 });
+
+// Audio — transcribe or analyze audio input
+const response = await client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'Transcribe this audio and summarize the key points.',
+      audio: 'https://example.com/recording.mp3',
+    },
+  ],
+});
+
+// Combined — image + audio in the same message
+const response = await client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'Describe what you see and hear.',
+      image: 'https://example.com/scene.jpg',
+      audio: 'https://example.com/ambient.mp3',
+    },
+  ],
+});
 ```
+
+> **Text output only:** `client.text.generate()` always returns text. To receive **audio output** (spoken responses), use [Omni Conversation](#omni-conversation) instead.
 
 ### Response (non-streaming)
 
@@ -395,120 +422,114 @@ if (result.status === 'completed') console.log(result.musicUrl);
 
 ---
 
-## Voice (TTS, STT & Voice Call)
+## Omni Conversation
 
-| Model | Description |
-|---|---|
-| `jassie-voice` | Text-to-speech, speech-to-text, and real-time voice call. Uses VoiceDesign — describe any voice via the `instruct` parameter. |
+Real-time multimodal conversation with voice output. Send text, images, video, or audio as input — receive streamed text and spoken audio back via Jassie Bolt's Omni engine. Choose from three built-in voices.
 
-### Text to Speech
+### Output Modes
 
-Returns `Promise<ArrayBuffer>` — raw audio bytes (MP3).
+Control what you receive back using the `text` parameter:
 
-The voice is controlled entirely through the `instruct` parameter. Describe the voice you want — gender, tone, accent, pacing, emotion — and the model generates it.
+| `text` value | You receive | Use case |
+|---|---|---|
+| `false` (default) | Audio only | Voice assistants, phone bots, hands-free apps |
+| `true` | Audio + text | Chat UIs with voice playback, accessibility, captions |
+
+> **Need text only?** Use [`client.text.generate()`](#text-generation) with `jassie-bolt` instead — no audio overhead.
+
+### Audio-only output (default)
+
+The response streams audio chunks. No text chunks are sent.
 
 ```typescript
-const audio = await client.voice.tts({
-  model: 'jassie-voice',
-  text: 'Hello, how are you?',
-  instruct: 'A warm male voice with an American accent, speaking in a friendly tone',
-  seed: 42,
+const stream = client.conversation.stream({
+  messages: [{ role: 'user', content: 'Tell me a joke.' }],
+  speaker: 'aiden',
 });
 
-// Save to file (Node.js)
-import fs from 'fs';
-fs.writeFileSync('hello.mp3', Buffer.from(audio));
+for await (const chunk of stream) {
+  if (chunk.type === 'audio') playAudio(chunk.data); // base64 audio
+  if (chunk.type === 'done') console.log('Finished');
+}
 ```
+
+### Audio + text output
+
+Set `text: true` to receive both text and audio chunks interleaved.
+
+```typescript
+const stream = client.conversation.stream({
+  messages: [
+    { role: 'system', content: 'You are a helpful tutor.' },
+    { role: 'user', content: 'Explain gravity in simple terms.' },
+  ],
+  speaker: 'chelsie',
+  text: true,
+});
+
+for await (const chunk of stream) {
+  if (chunk.type === 'text') process.stdout.write(chunk.content); // display text
+  if (chunk.type === 'audio') playAudio(chunk.data);              // play audio
+}
+```
+
+### Multimodal input
+
+Pass images, video, or audio in messages — same format as Bolt.
+
+```typescript
+// Describe an image out loud
+const stream = client.conversation.stream({
+  messages: [
+    {
+      role: 'user',
+      content: 'What do you see in this photo?',
+      image: 'https://example.com/photo.jpg',
+    },
+  ],
+  speaker: 'ethan',
+  text: true,
+});
+
+// Respond to audio input with spoken audio
+const stream = client.conversation.stream({
+  messages: [
+    {
+      role: 'user',
+      content: 'Reply to this voice message.',
+      audio: 'https://example.com/voice-note.mp3',
+    },
+  ],
+  speaker: 'chelsie',
+});
+```
+
+### Parameters
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-voice'` | **Yes** | — | Model to use |
-| `text` | `string` | **Yes** | — | Text to speak (max 5000 chars) |
-| `instruct` | `string` | No | — | Voice and style description (e.g. "A calm female voice with a British accent") |
-| `seed` | `number` | No | `42` | Random seed for voice consistency. Same seed + same instruct = consistent voice. |
+| `messages` | `Message[]` | **Yes** | — | Array of conversation messages (supports text, image, video, and audio fields) |
+| `speaker` | `'ethan' \| 'chelsie' \| 'aiden'` | No | — | Voice for audio output |
+| `text` | `boolean` | No | `false` | When `true`, streams both text and audio. When `false`, audio only. |
+| `maxTokens` | `number` | No | — | Maximum tokens in the response |
+| `temperature` | `number` | No | — | Randomness (0 = deterministic, 2 = creative) |
 
-### Speech to Text
+### Speakers
 
-Returns `Promise<string>` — transcribed text. Language is auto-detected.
+| Speaker | Description |
+|---|---|
+| `ethan` | Male voice |
+| `chelsie` | Female voice |
+| `aiden` | Male voice |
 
-```typescript
-const text = await client.voice.stt({
-  model: 'jassie-voice',
-  file: audioBlob,   // webm, mp3, wav, ogg, etc. (max 25MB)
-});
-```
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `model` | `'jassie-voice'` | **Yes** | Model to use |
-| `file` | `Blob \| File` | **Yes** | Audio file to transcribe |
-
-### Voice Call (Real-time Chat)
-
-Send audio and get a streamed response with both text and audio. Under the hood, this combines three models in a single pipeline: **Jassie STT** transcribes the user's audio, **Jassie Pulse** (with web search set to `auto`) generates the response, and **Jassie TTS** synthesizes the reply into streamed speech. Returns a `VoiceChatStream` — an async iterable of events.
-
-Audio is streamed as raw PCM int16 chunks for low-latency playback. Each sentence produces an `audio_start` event, followed by one or more `audio_chunk` events containing base64-encoded PCM data, and finally an `audio_end` event. The legacy `audio` event (complete base64 MP3 per sentence) may appear as a fallback.
-
-```typescript
-const stream = client.voice.chat({
-  audio: audioBlob,              // recorded audio (webm, mp3, wav, etc.)
-  messages: [                    // optional: conversation history
-    { role: 'user', content: 'Hello, how are you?' },
-  ],
-  instruct: 'A calm, reassuring male voice',  // optional: voice description
-  seed: 42,                      // optional: consistent voice across calls
-});
-
-// Option 1: iterate events
-for await (const event of stream) {
-  if (event.type === 'text_chunk') process.stdout.write(event.text_chunk);
-  if (event.type === 'audio_start') console.log('Playing:', event.sentence);
-  if (event.type === 'audio_chunk') playPCMChunk(event.audio_chunk); // base64 PCM int16
-  if (event.type === 'audio_end') console.log('Sentence done');
-  if (event.type === 'done') console.log('\nFull response:', event.text);
-}
-
-// Option 2: callback
-await stream.eachEvent((event) => {
-  if (event.type === 'text_chunk') process.stdout.write(event.text_chunk);
-});
-
-// Option 3: collect final result
-const result = await stream.finalResult();
-console.log(result.text);       // full response text
-console.log(result.user_text);  // transcribed user audio
-
-// Abort anytime
-stream.abort();
-```
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `audio` | `Blob \| File` | **Yes** | Recorded audio to send |
-| `messages` | `{ role: string, content: string }[]` | No | Conversation history for context |
-| `instruct` | `string` | No | Voice and style description (e.g. "A warm female voice with a British accent") |
-| `seed` | `number` | No | Random seed for voice consistency (default: `42`) |
-
-### Voice Chat Event Types
+### Stream Chunk Types
 
 | Type | Fields | Description |
 |---|---|---|
-| `searching` | — | Server is performing a web search |
-| `text_chunk` | `text_chunk` | Partial text being generated |
-| `audio_start` | `sentence`, `sample_rate` | Marks the beginning of a sentence's streamed audio (PCM int16, typically 24000 Hz) |
-| `audio_chunk` | `audio_chunk` | Base64-encoded PCM int16 audio data |
-| `audio_end` | `sentence` | Marks the end of a sentence's streamed audio |
-| `audio` | `audio`, `sentence` | Fallback: complete base64-encoded MP3 audio for a sentence |
-| `done` | `text`, `user_text` | Stream complete — full response text and transcribed user audio |
-| `error` | `error` | Error message |
-
-### Voice Chat Stream Methods
-
-| Method | Returns | Description |
-|---|---|---|
-| `eachEvent(cb)` | `Promise<void>` | Calls `cb(event)` for each event |
-| `finalResult()` | `Promise<VoiceChatEvent \| null>` | Returns the `done` event |
-| `abort()` | `void` | Cancels the stream |
+| `text` | `content` | Partial text being generated (only when `text: true`) |
+| `audio` | `data` | Base64-encoded audio chunk |
+| `done` | `content`, `usage` | Stream complete |
+| `error` | `content` | Error message |
 
 ---
 
@@ -569,17 +590,15 @@ await imgStream.eachEvent((event) => {
   if (event.type === 'completed') setFinalUrl(event.imageUrl);
 });
 
-// Voice call streaming
-const voiceStream = client.voice.chat({
-  audio: audioBlob,
-  instruct: 'A friendly, natural male voice',
+// Omni conversation streaming
+const convoStream = client.conversation.stream({
+  messages: [{ role: 'user', content: 'Hello from React Native!' }],
+  speaker: 'chelsie',
+  text: true,
 });
 
-await voiceStream.eachEvent((event) => {
-  if (event.type === 'text_chunk') setText((prev) => prev + event.text_chunk);
-  if (event.type === 'audio_start') console.log('Playing:', event.sentence);
-  if (event.type === 'audio_chunk') playPCMChunk(event.audio_chunk);
-  if (event.type === 'done') console.log('Done:', event.text);
+await convoStream.eachText((text) => {
+  setText((prev) => prev + text);
 });
 ```
 
