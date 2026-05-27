@@ -16,7 +16,6 @@ export type {
   Usage,
   JassieChunk,
   Speaker,
-  ConversationParams,
   TextGenerateParams,
   TextStreamParams,
   CodeGenerateParams,
@@ -51,5 +50,3 @@ export {
 export { JassieStream } from './streaming/stream.js';
 export { ImageStream } from './streaming/image-stream.js';
 
-// Resources
-export { Conversation } from './resources/conversation.js';

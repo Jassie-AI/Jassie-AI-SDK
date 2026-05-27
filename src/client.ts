@@ -16,8 +16,6 @@ import { Code } from './resources/code.js';
 import { Image } from './resources/image.js';
 import { Video } from './resources/video.js';
 import { Music } from './resources/music.js';
-import { Conversation } from './resources/conversation.js';
-
 const DEFAULT_BASE_URL = 'https://api.jassie.ai';
 const DEFAULT_TIMEOUT = 60000;
 const DEFAULT_MAX_RETRIES = 2;
@@ -34,7 +32,6 @@ export class JassieAI {
   readonly image: Image;
   readonly video: Video;
   readonly music: Music;
-  readonly conversation: Conversation;
 
   constructor(options: JassieAIOptions) {
     if (!options.apiKey) {
@@ -51,7 +48,6 @@ export class JassieAI {
     this.image = new Image(this);
     this.video = new Video(this);
     this.music = new Music(this);
-    this.conversation = new Conversation(this);
   }
 
   private buildHeaders(): Record<string, string> {

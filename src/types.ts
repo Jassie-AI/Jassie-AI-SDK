@@ -76,6 +76,8 @@ export interface TextGenerateParams {
   maxTokens?: number;
   temperature?: number;
   web?: 'auto' | 'always' | null;
+  modalities?: ('text' | 'audio')[];
+  speaker?: Speaker;
 }
 
 export interface TextStreamParams {
@@ -85,6 +87,8 @@ export interface TextStreamParams {
   maxTokens?: number;
   temperature?: number;
   web?: 'auto' | 'always' | null;
+  modalities?: ('text' | 'audio')[];
+  speaker?: Speaker;
 }
 
 export interface CodeGenerateParams {
@@ -134,15 +138,6 @@ export interface MusicGenerateParams {
   lyrics?: string;
   seed?: number;
   duration: number;
-}
-
-export interface ConversationParams {
-  messages: Message[];
-  maxTokens?: number;
-  text?: boolean;
-  speaker?: Speaker;
-  temperature?: number;
-  web?: 'auto' | 'always' | null;
 }
 
 // ── Response Types ───────────────────────────────────────────────────────────
