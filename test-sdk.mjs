@@ -15,9 +15,11 @@ import { JassieAI, JassieAuthenticationError } from './lib/esm/index.js';
 
 const API_KEY = process.env.JASSIE_API_KEY;
 const TEST_IMAGE_URL =
-  'https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg';
+  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=640';
 const TEST_VIDEO_URL =
   'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241115/cqqkru/1.mp4';
+const TEST_AUDIO_URL =
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
 
 if (!API_KEY || API_KEY === 'your-api-key-here') {
   console.error('\n  ✗ Please set JASSIE_API_KEY in the .env file\n');
@@ -777,105 +779,161 @@ async function testMusicGenerateWithLyrics() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. VOICE — JASSIE VOICE (TTS, STT & VOICE CALL)
+// 7. BOLT VOICE OUTPUT — AUDIO STREAMING VIA text.generate()
 // ═══════════════════════════════════════════════════════════════════════════
 
-let ttsAudioBuffer = null; // shared between TTS and STT round-trip
-
-async function testVoiceTTS() {
-  section('7a. Voice — TTS with instruct');
+async function testBoltAudioOnly() {
+  section('7a. Bolt Voice — audio-only output (speaker: ethan)');
   try {
-    const audioBuffer = await client.voice.tts({
-      model: 'jassie-voice',
-      text: 'Hello, this is a test of the Jassie AI text to speech system.',
-      instruct: 'A warm, friendly female voice with a calm tone',
-      seed: 42,
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
+      modalities: ['audio'],
+      speaker: 'ethan',
+      stream: true,
+      maxTokens: 100,
     });
-    if (audioBuffer && audioBuffer.byteLength > 0) {
-      pass('voice.tts', `received ${audioBuffer.byteLength} bytes of audio`);
-      ttsAudioBuffer = audioBuffer; // save for STT test
+    let audioChunks = 0;
+    let textChunks = 0;
+    let gotDone = false;
+    for await (const chunk of stream) {
+      if (chunk.type === 'audio' && chunk.data) audioChunks++;
+      if (chunk.type === 'text') textChunks++;
+      if (chunk.type === 'done') gotDone = true;
+    }
+    if (audioChunks > 0 && gotDone) {
+      pass('bolt audio-only (ethan)', `${audioChunks} audio chunks, ${textChunks} text chunks, done: true`);
     } else {
-      fail('voice.tts', new Error('Empty audio buffer returned'));
+      fail('bolt audio-only (ethan)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('voice.tts', err);
+    fail('bolt audio-only (ethan)', err);
   }
 }
 
-async function testVoiceSTT() {
-  section('7b. Voice — STT (speech-to-text, round-trip)');
-  if (!ttsAudioBuffer) {
-    fail('voice.stt', new Error('No TTS audio from previous test — skipping'));
-    return;
-  }
+async function testBoltAudioText() {
+  section('7b. Bolt Voice — audio + text output (speaker: chelsie)');
   try {
-    const audioBlob = new Blob([ttsAudioBuffer], { type: 'audio/mp3' });
-    const audioFile = new File([audioBlob], 'test-audio.mp3', { type: 'audio/mp3' });
-    const text = await client.voice.stt({
-      model: 'jassie-voice',
-      file: audioFile,
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'Tell me a fun fact in one sentence.' }],
+      modalities: ['text', 'audio'],
+      speaker: 'chelsie',
+      stream: true,
+      maxTokens: 150,
     });
-    if (text && text.length > 0) {
-      pass('voice.stt', `transcribed: "${text.slice(0, 100)}"`);
+    let audioChunks = 0;
+    let text = '';
+    let gotDone = false;
+    for await (const chunk of stream) {
+      if (chunk.type === 'audio' && chunk.data) audioChunks++;
+      if (chunk.type === 'text') text += chunk.content;
+      if (chunk.type === 'done') gotDone = true;
+    }
+    if (audioChunks > 0 && text.length > 0 && gotDone) {
+      pass('bolt audio+text (chelsie)', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}…"`);
     } else {
-      fail('voice.stt', new Error('Empty transcription returned'));
+      fail('bolt audio+text (chelsie)', new Error(`audioChunks=${audioChunks}, text.length=${text.length}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('voice.stt', err);
+    fail('bolt audio+text (chelsie)', err);
   }
 }
 
-async function testVoiceChat() {
-  section('7c. Voice — voice call (chat) streaming');
-  if (!ttsAudioBuffer) {
-    fail('voice.chat', new Error('No TTS audio from previous test — skipping'));
-    return;
-  }
+async function testBoltVoiceAiden() {
+  section('7c. Bolt Voice — audio output (speaker: aiden)');
   try {
-    const audioBlob = new Blob([ttsAudioBuffer], { type: 'audio/webm' });
-    const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-    const chatParams = {
-      audio: audioFile,
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [{ role: 'user', content: 'Count from 1 to 3.' }],
+      modalities: ['text', 'audio'],
+      speaker: 'aiden',
+      stream: true,
+      maxTokens: 50,
+    });
+    let audioChunks = 0;
+    let gotDone = false;
+    for await (const chunk of stream) {
+      if (chunk.type === 'audio' && chunk.data) audioChunks++;
+      if (chunk.type === 'done') gotDone = true;
+    }
+    if (audioChunks > 0 && gotDone) {
+      pass('bolt voice (aiden)', `${audioChunks} audio chunks`);
+    } else {
+      fail('bolt voice (aiden)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
+    }
+  } catch (err) {
+    fail('bolt voice (aiden)', err);
+  }
+}
+
+async function testBoltVoiceWithImage() {
+  section('7d. Bolt Voice — audio output with image input');
+  try {
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
       messages: [
-        { role: 'user', content: 'Hello, how are you?' },
+        {
+          role: 'user',
+          content: 'Describe this image in one sentence.',
+          image: TEST_IMAGE_URL,
+        },
       ],
-      instruct: 'A warm, friendly voice with a calm tone',
-      seed: 42,
-    };
-
-    const stream = client.voice.chat(chatParams);
-    const events = [];
-    let textChunks = '';
-    let doneEvent = null;
-
-    for await (const event of stream) {
-      events.push(event);
-      if (event.type === 'text_chunk') {
-        textChunks += event.text_chunk;
-      } else if (event.type === 'done') {
-        doneEvent = event;
-      } else if (event.type === 'error') {
-        fail('voice.chat', new Error(`Server error: ${event.error}`));
-        return;
-      }
+      modalities: ['text', 'audio'],
+      speaker: 'ethan',
+      stream: true,
+      maxTokens: 150,
+    });
+    let audioChunks = 0;
+    let text = '';
+    let gotDone = false;
+    for await (const chunk of stream) {
+      if (chunk.type === 'audio' && chunk.data) audioChunks++;
+      if (chunk.type === 'text') text += chunk.content;
+      if (chunk.type === 'done') gotDone = true;
     }
-
-    if (events.length > 0) {
-      const types = [...new Set(events.map((e) => e.type))].join(', ');
-      pass('voice.chat streaming', `${events.length} events received (types: ${types})`);
+    if (audioChunks > 0 && text.length > 0 && gotDone) {
+      pass('bolt voice + image', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}…"`);
     } else {
-      fail('voice.chat streaming', new Error('No events received'));
-    }
-
-    if (doneEvent) {
-      pass('voice.chat done', `text: "${(doneEvent.text || '').slice(0, 80)}…", user_text: "${(doneEvent.user_text || '').slice(0, 50)}"`);
-    } else if (textChunks.length > 0) {
-      pass('voice.chat text', `collected text: "${textChunks.slice(0, 80)}…"`);
-    } else {
-      fail('voice.chat result', new Error('No done event or text chunks received'));
+      fail('bolt voice + image', new Error(`audioChunks=${audioChunks}, text.length=${text.length}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('voice.chat', err);
+    fail('bolt voice + image', err);
+  }
+}
+
+async function testBoltVoiceWithAudioInput() {
+  section('7e. Bolt Voice — audio output with audio input');
+  try {
+    const stream = client.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        {
+          role: 'user',
+          content: 'What do you hear? Describe briefly.',
+          audio: TEST_AUDIO_URL,
+        },
+      ],
+      modalities: ['text', 'audio'],
+      speaker: 'chelsie',
+      stream: true,
+      maxTokens: 150,
+    });
+    let audioChunks = 0;
+    let text = '';
+    let gotDone = false;
+    for await (const chunk of stream) {
+      if (chunk.type === 'audio' && chunk.data) audioChunks++;
+      if (chunk.type === 'text') text += chunk.content;
+      if (chunk.type === 'done') gotDone = true;
+    }
+    if (audioChunks > 0 && text.length > 0 && gotDone) {
+      pass('bolt voice + audio input', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}…"`);
+    } else {
+      fail('bolt voice + audio input', new Error(`audioChunks=${audioChunks}, text.length=${text.length}, gotDone=${gotDone}`));
+    }
+  } catch (err) {
+    fail('bolt voice + audio input', err);
   }
 }
 
@@ -962,6 +1020,7 @@ async function run() {
   console.log(`  Base URL:    https://api.jassie.ai`);
   console.log(`  Test image:  ${TEST_IMAGE_URL.slice(0, 50)}…`);
   console.log(`  Test video:  ${TEST_VIDEO_URL.slice(0, 50)}…`);
+  console.log(`  Test audio:  ${TEST_AUDIO_URL.slice(0, 50)}…`);
 
   // ── 1. Text Generation — Jassie Pulse ──
   header('1. TEXT GENERATION — JASSIE PULSE');
@@ -1022,11 +1081,13 @@ async function run() {
   await withRetry(() => testMusicStatusPolling(musicTaskId));
   await withRetry(testMusicGenerateWithLyrics);
 
-  // ── 7. Voice — Jassie Voice (TTS, STT & Voice Call) ──
-  header('7. VOICE — JASSIE VOICE (TTS, STT & VOICE CALL)');
-  await withRetry(testVoiceTTS);
-  await withRetry(testVoiceSTT);
-  await withRetry(testVoiceChat);
+  // ── 7. Bolt Voice Output ──
+  header('7. BOLT VOICE OUTPUT');
+  await withRetry(testBoltAudioOnly);
+  await withRetry(testBoltAudioText);
+  await withRetry(testBoltVoiceAiden);
+  await withRetry(testBoltVoiceWithImage);
+  await withRetry(testBoltVoiceWithAudioInput);
 
   // ── 8. Error Handling ──
   header('8. ERROR HANDLING');
