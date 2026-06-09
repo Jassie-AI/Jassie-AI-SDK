@@ -47,10 +47,18 @@ export class Video {
     return poll<VideoTaskResponse>({
       fetcher,
       isComplete: (res) =>
-        res.status === 'succeeded' || res.status === 'failed',
+        res.status === 'succeeded' || res.status === 'failed' || res.status === 'cancelled',
       interval: options.interval,
       timeout: options.timeout,
       onPoll: options.onPoll,
     });
+  }
+
+  /** Cancel a video generation task. */
+  async cancel(taskId: string): Promise<VideoTaskResponse> {
+    return this.client._request<VideoTaskResponse>(
+      'DELETE',
+      `/v1/generate-video/${taskId}`,
+    );
   }
 }

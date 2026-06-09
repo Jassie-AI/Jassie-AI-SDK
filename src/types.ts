@@ -158,7 +158,7 @@ export interface ImageTaskResponse {
   type?: 'status' | 'completed' | 'failed';
   model: string;
   taskId: string;
-  status: 'pending' | 'preview_ready' | 'succeeded' | 'failed';
+  status: 'pending' | 'preview_ready' | 'succeeded' | 'failed' | 'cancelled';
   imageUrl: string | null;
   expiresOn: string | null;
 }
@@ -166,7 +166,7 @@ export interface ImageTaskResponse {
 export interface VideoTaskResponse {
   model: string;
   taskId: string;
-  status: 'pending' | 'running' | 'succeeded' | 'failed';
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
   videoUrl: string | null;
   expiresOn: string | null;
 }
@@ -174,7 +174,7 @@ export interface VideoTaskResponse {
 export interface MusicTaskResponse {
   model: string;
   taskId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   musicUrl: string | null;
   expiresOn: string | null;
 }

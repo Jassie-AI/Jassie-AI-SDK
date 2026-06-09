@@ -56,7 +56,7 @@ export class Image {
     return poll<ImageTaskResponse>({
       fetcher,
       isComplete: (res) =>
-        res.status === 'succeeded' || res.status === 'failed',
+        res.status === 'succeeded' || res.status === 'failed' || res.status === 'cancelled',
       interval: options.interval,
       timeout: options.timeout,
       onPoll: options.onPoll,
@@ -77,6 +77,14 @@ export class Image {
     return this.client._imageStream(
       `/v2/generate-image/${taskId}?stream=true`,
       null,
+    );
+  }
+
+  /** Cancel an image generation task. */
+  async cancel(taskId: string): Promise<ImageTaskResponse> {
+    return this.client._request<ImageTaskResponse>(
+      'DELETE',
+      `/v2/generate-image/${taskId}`,
     );
   }
 }

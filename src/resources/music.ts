@@ -47,10 +47,18 @@ export class Music {
     return poll<MusicTaskResponse>({
       fetcher,
       isComplete: (res) =>
-        res.status === 'completed' || res.status === 'failed',
+        res.status === 'completed' || res.status === 'failed' || res.status === 'cancelled',
       interval: options.interval,
       timeout: options.timeout,
       onPoll: options.onPoll,
     });
+  }
+
+  /** Cancel a music generation task. */
+  async cancel(taskId: string): Promise<MusicTaskResponse> {
+    return this.client._request<MusicTaskResponse>(
+      'DELETE',
+      `/v1/generate-music/${taskId}`,
+    );
   }
 }
