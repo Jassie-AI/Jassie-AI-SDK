@@ -114,6 +114,8 @@ export interface ImageGenerateParams {
   prompt: string;
   image?: string | string[];
   aspectRatio?: string;
+  width?: number;
+  height?: number;
   showcase?: boolean;
 }
 

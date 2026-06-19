@@ -567,6 +567,48 @@ async function testImagePixelX() {
   }
 }
 
+async function testImagePixelCustomSize() {
+  section('4e. Image — Pixel with custom width/height');
+  try {
+    const res = await client.image.generate({
+      model: 'jassie-pixel',
+      prompt: 'A serene mountain landscape at sunset with a calm lake',
+      width: 2560,
+      height: 1440,
+    });
+    if (res && res.imageUrl) {
+      pass('image pixel custom size', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image pixel custom size');
+    } else {
+      fail('image pixel custom size', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('image pixel custom size', err);
+  }
+}
+
+async function testImagePixelXCustomSize() {
+  section('4f. Image — Pixel-X with custom width/height (4K)');
+  try {
+    const res = await client.image.generate({
+      model: 'jassie-pixel-x',
+      prompt: 'A futuristic cityscape at night with neon lights',
+      width: 3840,
+      height: 2160,
+    });
+    if (res && res.imageUrl) {
+      pass('image pixel-x custom size', `status: ${res.status}`);
+      console.log(`    → ${res.imageUrl}`);
+      verifyShape(res, IMAGE_RESPONSE_SCHEMA, 'image pixel-x custom size');
+    } else {
+      fail('image pixel-x custom size', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('image pixel-x custom size', err);
+  }
+}
+
 async function testImageWithReference() {
   section('4c. Image — Pixel with reference image');
   try {
@@ -1051,6 +1093,8 @@ async function run() {
   header('4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X');
   await withRetry(testImagePixel);
   await withRetry(testImagePixelX);
+  await withRetry(testImagePixelCustomSize);
+  await withRetry(testImagePixelXCustomSize);
   await withRetry(testImageWithReference);
   await withRetry(testImageWithMultiReference);
 

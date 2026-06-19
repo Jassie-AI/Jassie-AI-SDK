@@ -353,6 +353,8 @@ for await (const event of stream) {
 | `prompt` | `string` | **Yes** | — | Image description |
 | `image` | `string \| string[]` | No | — | Input image URL(s) for editing or composition (up to 14) |
 | `aspectRatio` | `string` | No | `'1:1'` | `'1:1'`, `'4:3'`, `'3:4'`, `'16:9'`, `'9:16'`, `'3:2'`, `'2:3'`, `'21:9'` |
+| `width` | `number` | No | — | Output width in pixels (must be divisible by 8). Requires `height`. Overrides `aspectRatio`. |
+| `height` | `number` | No | — | Output height in pixels (must be divisible by 8). Requires `width`. Overrides `aspectRatio`. |
 
 ### Response
 
