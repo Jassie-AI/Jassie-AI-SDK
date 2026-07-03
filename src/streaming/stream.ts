@@ -72,7 +72,7 @@ export class JassieStream implements AsyncIterable<JassieChunk> {
     const iterator = this[Symbol.asyncIterator]();
     let result = await iterator.next();
     while (!result.done) {
-      if (result.value.type === 'text' && result.value.content) {
+      if (result.value.type === 'text' && result.value.content != null) {
         cb(result.value.content);
       }
       result = await iterator.next();

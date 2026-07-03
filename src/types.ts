@@ -27,6 +27,7 @@ export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
   image?: string | string[];
+  images?: string[];
   video?: string | string[];
   audio?: string;
 }
@@ -50,8 +51,8 @@ export interface Usage {
 
 export interface JassieChunk {
   type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'audio' | 'start' | 'done' | 'queue_position';
-  content: string;
-  done: boolean;
+  content?: string;
+  done?: boolean;
   data?: string;
   fallback?: boolean;
   index?: number;
@@ -89,6 +90,25 @@ export interface TextStreamParams {
   web?: 'auto' | 'always' | null;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
+}
+
+export interface ConversationMessage {
+  role: 'system' | 'user' | 'assistant';
+  content?: string;
+  images?: string[];
+  video?: string[];
+  audio?: string;
+}
+
+export interface ConversationStreamParams {
+  messages: ConversationMessage[];
+  stream?: true;
+  max_tokens?: number;
+  maxTokens?: number;
+  temperature?: number;
+  modalities?: ('text' | 'audio')[];
+  speaker?: Speaker;
+  web?: 'auto' | 'always' | null;
 }
 
 export interface CodeGenerateParams {

@@ -16,6 +16,8 @@ export type {
   Usage,
   JassieChunk,
   Speaker,
+  ConversationMessage,
+  ConversationStreamParams,
   TextGenerateParams,
   TextStreamParams,
   CodeGenerateParams,

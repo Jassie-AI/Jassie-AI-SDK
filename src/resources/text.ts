@@ -3,6 +3,7 @@ import type {
   TextGenerateParams,
   TextStreamParams,
   TextResponse,
+  ConversationStreamParams,
 } from '../types.js';
 import type { JassieStream } from '../streaming/stream.js';
 
@@ -29,5 +30,25 @@ export class Text {
       ...params,
       stream: false,
     });
+  }
+
+  /**
+   * Stream a conversation via /v1/conversation.
+   * Supports text, images, video, and audio input/output.
+   * This endpoint handles multimodal messages natively.
+   */
+  conversation(params: ConversationStreamParams): JassieStream {
+    const body: Record<string, unknown> = {
+      messages: params.messages,
+      stream: true,
+    };
+    if (params.max_tokens != null) body.max_tokens = params.max_tokens;
+    if (params.maxTokens != null) body.max_tokens = params.maxTokens;
+    if (params.temperature != null) body.temperature = params.temperature;
+    if (params.modalities) body.modalities = params.modalities;
+    if (params.speaker) body.speaker = params.speaker;
+    if (params.web) body.web = params.web;
+
+    return this.client._stream('POST', '/v1/conversation', body);
   }
 }
