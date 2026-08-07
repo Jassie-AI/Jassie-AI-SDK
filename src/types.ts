@@ -66,7 +66,12 @@ export interface JassieChunk {
 
 // ── Speakers ─────────────────────────────────────────────────────────────────
 
-export type Speaker = 'ethan' | 'chelsie' | 'aiden';
+/**
+ * Voice ID for TTS output. Use a pre-loaded voice name (e.g. the names of
+ * .wav files in the server's voices directory) or `"default"` for the
+ * model's built-in voice.
+ */
+export type Speaker = string;
 
 // ── Request Params ───────────────────────────────────────────────────────────
 
@@ -79,6 +84,8 @@ export interface TextGenerateParams {
   web?: 'auto' | 'always' | null;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
+  voiceSample?: string;
+  voiceSampleText?: string;
 }
 
 export interface TextStreamParams {
@@ -90,6 +97,8 @@ export interface TextStreamParams {
   web?: 'auto' | 'always' | null;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
+  voiceSample?: string;
+  voiceSampleText?: string;
 }
 
 export interface ConversationMessage {
@@ -108,6 +117,8 @@ export interface ConversationStreamParams {
   temperature?: number;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
+  voiceSample?: string;
+  voiceSampleText?: string;
   web?: 'auto' | 'always' | null;
 }
 
@@ -162,6 +173,14 @@ export interface MusicGenerateParams {
   duration: number;
 }
 
+export interface TTSParams {
+  text: string;
+  speaker?: Speaker;
+  language?: string;
+  voiceSample?: string;
+  voiceSampleText?: string;
+}
+
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
@@ -199,6 +218,11 @@ export interface MusicTaskResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   musicUrl: string | null;
   expiresOn: string | null;
+}
+
+export interface TTSResponse {
+  audio: string;       // base64-encoded PCM-16 WAV (24 kHz)
+  duration_ms: number;
 }
 
 // ── Image Streaming Events ───────────────────────────────────────────────────

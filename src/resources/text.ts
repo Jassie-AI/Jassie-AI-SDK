@@ -4,6 +4,8 @@ import type {
   TextStreamParams,
   TextResponse,
   ConversationStreamParams,
+  TTSParams,
+  TTSResponse,
 } from '../types.js';
 import type { JassieStream } from '../streaming/stream.js';
 
@@ -47,8 +49,21 @@ export class Text {
     if (params.temperature != null) body.temperature = params.temperature;
     if (params.modalities) body.modalities = params.modalities;
     if (params.speaker) body.speaker = params.speaker;
+    if (params.voiceSample) body.voiceSample = params.voiceSample;
+    if (params.voiceSampleText) body.voiceSampleText = params.voiceSampleText;
     if (params.web) body.web = params.web;
 
     return this.client._stream('POST', '/v1/conversation', body);
+  }
+
+  /**
+   * Convert text to speech audio.
+   *
+   * Returns a base64-encoded PCM-16 WAV at 24 kHz.
+   * Supports pre-loaded voices (by speaker name) and on-the-fly
+   * voice cloning (via voiceSample).
+   */
+  async tts(params: TTSParams): Promise<TTSResponse> {
+    return this.client._request<TTSResponse>('POST', '/v1/tts', params);
   }
 }
