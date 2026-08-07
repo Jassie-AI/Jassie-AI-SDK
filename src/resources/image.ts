@@ -7,6 +7,42 @@ import type {
 import { poll } from '../polling.js';
 import type { ImageStream } from '../streaming/image-stream.js';
 
+const PIXEL_LITE_MAX_DIM = 1536;
+const PIXEL_LITE_MAX_PIXELS = 1536 * 1536;
+
+/** Clamp dimensions for jassie-pixel-lite and strip unsupported fields. */
+function prepareParams(params: ImageGenerateParams): ImageGenerateParams {
+  const out = { ...params };
+
+  if (out.model === 'jassie-pixel-lite') {
+    // pixel-lite does not support reference images
+    delete out.image;
+
+    // Clamp width/height to server max
+    if (typeof out.width === 'number') {
+      out.width = Math.min(out.width, PIXEL_LITE_MAX_DIM);
+      out.width = out.width - (out.width % 16); // must be multiple of 16
+    }
+    if (typeof out.height === 'number') {
+      out.height = Math.min(out.height, PIXEL_LITE_MAX_DIM);
+      out.height = out.height - (out.height % 16);
+    }
+
+    // Clamp total pixels
+    if (typeof out.width === 'number' && typeof out.height === 'number') {
+      while (out.width * out.height > PIXEL_LITE_MAX_PIXELS) {
+        if (out.width >= out.height) {
+          out.width -= 16;
+        } else {
+          out.height -= 16;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 export class Image {
   private client: ClientInterface;
 
@@ -19,7 +55,7 @@ export class Image {
     return this.client._request<ImageTaskResponse>(
       'POST',
       '/v1/generate-image',
-      params,
+      prepareParams(params),
     );
   }
 
@@ -28,7 +64,7 @@ export class Image {
     return this.client._request<ImageTaskResponse>(
       'POST',
       '/v2/generate-image',
-      params,
+      prepareParams(params),
     );
   }
 
