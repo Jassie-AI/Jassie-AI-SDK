@@ -51,7 +51,6 @@ export class Text {
     if (params.speaker) body.speaker = params.speaker;
     if (params.voiceSample) body.voiceSample = params.voiceSample;
     if (params.voiceSampleText) body.voiceSampleText = params.voiceSampleText;
-    if (params.web) body.web = params.web;
 
     return this.client._stream('POST', '/v1/conversation', body);
   }

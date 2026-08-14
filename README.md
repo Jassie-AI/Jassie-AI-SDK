@@ -64,11 +64,9 @@ const response = await client.text.generate({
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Explain how DNS works.' },
   ],
-  web: 'auto',
 });
 
 console.log(response.content);
-console.log(response.web_search?.query); // search query, if web search was used
 
 // Streaming
 const stream = client.text.generate({
@@ -91,7 +89,6 @@ for await (const chunk of stream) {
 | `stream` | `boolean` | No | `false` | Enable real-time streaming |
 | `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
 | `temperature` | `number` | No | `0.7` | Randomness (0 = deterministic, 2 = creative) |
-| `web` | `'auto' \| 'always' \| null` | No | `null` | Web search mode |
 | `modalities` | `('text' \| 'audio')[]` | No | — | Output modalities. Include `'audio'` to receive voice output (Bolt only) |
 | `speaker` | `'ethan' \| 'chelsie' \| 'aiden'` | No | — | Voice for audio output (required when modalities includes `'audio'`) |
 
@@ -272,7 +269,6 @@ const stream = client.text.generate({
 | `request_id` | `string` | Unique identifier for the request |
 | `chunks` | `number` | Total number of tokens generated |
 | `duration_seconds` | `number` | Time in seconds the model took to generate the response |
-| `web_search` | `{ query: string }` | Present when a web search was performed |
 
 ---
 
@@ -289,13 +285,6 @@ const response = await client.code.generate({
 });
 
 console.log(response.content);
-
-// With web search for up-to-date APIs
-const response = await client.code.generate({
-  model: 'jassie-code',
-  messages: [{ role: 'user', content: 'Show me how to use the latest Bun.serve() API.' }],
-  web: 'auto',
-});
 ```
 
 Same parameters and response format as [Text Generation](#parameters).

@@ -239,26 +239,6 @@ async function testPulseSystemMessage() {
   }
 }
 
-async function testPulseWebSearch() {
-  section('1e. Pulse — web search (web: "auto")');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
-      web: 'auto',
-      maxTokens: 200,
-    });
-    if (res && res.content) {
-      pass('pulse web search', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse web search');
-    } else {
-      fail('pulse web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('pulse web search', err);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // 2. TEXT GENERATION — JASSIE BOLT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -429,26 +409,6 @@ async function testBoltMultiVideoVision() {
   }
 }
 
-async function testBoltWebSearch() {
-  section('2h. Bolt — web search (web: "auto")');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-bolt',
-      messages: [{ role: 'user', content: 'What is the latest news today? Keep it brief.' }],
-      web: 'auto',
-      maxTokens: 200,
-    });
-    if (res && res.content) {
-      pass('bolt web search', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt web search');
-    } else {
-      fail('bolt web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('bolt web search', err);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. CODE GENERATION — JASSIE CODE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -498,28 +458,6 @@ async function testCodeStreaming() {
     }
   } catch (err) {
     fail('code streaming', err);
-  }
-}
-
-async function testCodeWebSearch() {
-  section('3c. Code — web search (web: "auto")');
-  try {
-    const res = await client.code.generate({
-      model: 'jassie-code',
-      messages: [
-        { role: 'user', content: 'Show me how to use the latest Bun.serve() API with examples.' },
-      ],
-      web: 'auto',
-      maxTokens: 300,
-    });
-    if (res && res.content) {
-      pass('code web search', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'code web search');
-    } else {
-      fail('code web search', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('code web search', err);
   }
 }
 
@@ -1070,7 +1008,6 @@ async function run() {
   await withRetry(testPulseStreaming);
   await withRetry(testPulseFinalText);
   await withRetry(testPulseSystemMessage);
-  await withRetry(testPulseWebSearch);
 
   // ── 2. Text Generation — Jassie Bolt ──
   header('2. TEXT GENERATION — JASSIE BOLT');
@@ -1081,13 +1018,11 @@ async function run() {
   await withRetry(testBoltMultiImageVision);
   await withRetry(testBoltVideoVision);
   await withRetry(testBoltMultiVideoVision);
-  await withRetry(testBoltWebSearch);
 
   // ── 3. Code Generation — Jassie Code ──
   header('3. CODE GENERATION — JASSIE CODE');
   await withRetry(testCodeNonStreaming);
   await withRetry(testCodeStreaming);
-  await withRetry(testCodeWebSearch);
 
   // ── 4. Image Generation — Jassie Pixel & Pixel-X ──
   header('4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X');

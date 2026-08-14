@@ -81,7 +81,6 @@ export interface TextGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always' | null;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
   voiceSample?: string;
@@ -94,7 +93,6 @@ export interface TextStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always' | null;
   modalities?: ('text' | 'audio')[];
   speaker?: Speaker;
   voiceSample?: string;
@@ -119,7 +117,6 @@ export interface ConversationStreamParams {
   speaker?: Speaker;
   voiceSample?: string;
   voiceSampleText?: string;
-  web?: 'auto' | 'always' | null;
 }
 
 export interface CodeGenerateParams {
@@ -128,7 +125,6 @@ export interface CodeGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always' | null;
 }
 
 export interface CodeStreamParams {
@@ -137,7 +133,6 @@ export interface CodeStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  web?: 'auto' | 'always' | null;
 }
 
 export interface ImageGenerateParams {
@@ -181,6 +176,34 @@ export interface TTSParams {
   voiceSampleText?: string;
 }
 
+// ── Planner ─────────────────────────────────────────────────────────────────
+
+export interface PlanTool {
+  name: string;
+  description: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface PlanParams {
+  query: string;
+  context?: Message[];
+  tools?: PlanTool[];
+}
+
+export interface PlanStep {
+  id: number;
+  tool: string;
+  description: string;
+  params: Record<string, unknown>;
+  depends_on: number[];
+}
+
+export interface PlanResponse {
+  type: 'chat' | 'task' | 'clarify';
+  steps?: PlanStep[];
+  questions?: string[];
+}
+
 // ── Response Types ───────────────────────────────────────────────────────────
 
 export interface TextResponse {
@@ -190,9 +213,6 @@ export interface TextResponse {
   request_id?: string;
   chunks?: number;
   duration_seconds?: number;
-  web_search?: {
-    query: string;
-  };
 }
 
 export interface ImageTaskResponse {
