@@ -188,6 +188,7 @@ export interface PlanParams {
   query: string;
   context?: Message[];
   tools?: PlanTool[];
+  system_prompt?: string;
 }
 
 export interface PlanStep {
