@@ -54,7 +54,7 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 | Model | Description |
 |---|---|
 | `jassie-pulse` | Lightning-fast text intelligence with million-token context |
-| `jassie-bolt` | Flagship multimodal model — text, images, video, audio input and voice output |
+| `jassie-bolt` | Flagship multimodal model — text, images, video input and voice output |
 
 ```typescript
 // Non-streaming
@@ -92,13 +92,13 @@ for await (const chunk of stream) {
 | `modalities` | `('text' \| 'audio')[]` | No | — | Output modalities. Include `'audio'` to receive voice output (Bolt only) |
 | `speaker` | `'ethan' \| 'chelsie' \| 'aiden'` | No | — | Voice for audio output (required when modalities includes `'audio'`) |
 
-**Message format:** `{ role: 'system' | 'user' | 'assistant', content: string, image?: string | string[], video?: string | string[], audio?: string }`
+**Message format:** `{ role: 'system' | 'user' | 'assistant', content: string, image?: string | string[], video?: string | string[] }`
 
-> **Note:** The `image`, `video`, `audio`, `modalities`, and `speaker` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
+> **Note:** The `image`, `video`, `modalities`, and `speaker` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
 
 ### Multimodal Input (Bolt only)
 
-`jassie-bolt` can analyze images, videos, and audio passed in messages.
+`jassie-bolt` can analyze images and videos passed in messages.
 
 ```typescript
 // Single image
@@ -133,31 +133,6 @@ const response = await client.text.generate({
       role: 'user',
       content: 'What is happening in this video?',
       video: 'https://example.com/clip.mp4',
-    },
-  ],
-});
-
-// Audio — transcribe or analyze audio input
-const response = await client.text.generate({
-  model: 'jassie-bolt',
-  messages: [
-    {
-      role: 'user',
-      content: 'Transcribe this audio and summarize the key points.',
-      audio: 'https://example.com/recording.mp3',
-    },
-  ],
-});
-
-// Combined — image + audio in the same message
-const response = await client.text.generate({
-  model: 'jassie-bolt',
-  messages: [
-    {
-      role: 'user',
-      content: 'Describe what you see and hear.',
-      image: 'https://example.com/scene.jpg',
-      audio: 'https://example.com/ambient.mp3',
     },
   ],
 });
@@ -231,21 +206,6 @@ const stream = client.text.generate({
   ],
   modalities: ['text', 'audio'],
   speaker: 'ethan',
-  stream: true,
-});
-
-// Respond to a voice message with spoken audio
-const stream = client.text.generate({
-  model: 'jassie-bolt',
-  messages: [
-    {
-      role: 'user',
-      content: 'Reply to this voice message.',
-      audio: 'https://example.com/voice-note.mp3',
-    },
-  ],
-  modalities: ['audio'],
-  speaker: 'chelsie',
   stream: true,
 });
 ```

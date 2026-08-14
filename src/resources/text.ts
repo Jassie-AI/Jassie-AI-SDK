@@ -36,7 +36,7 @@ export class Text {
 
   /**
    * Stream a conversation via /v1/conversation.
-   * Supports text, images, video, and audio input/output.
+   * Supports text, images, and video input with text and audio output.
    * This endpoint handles multimodal messages natively.
    */
   conversation(params: ConversationStreamParams): JassieStream {
@@ -51,6 +51,7 @@ export class Text {
     if (params.speaker) body.speaker = params.speaker;
     if (params.voiceSample) body.voiceSample = params.voiceSample;
     if (params.voiceSampleText) body.voiceSampleText = params.voiceSampleText;
+    if (params.reasoning) body.reasoning = params.reasoning;
 
     return this.client._stream('POST', '/v1/conversation', body);
   }

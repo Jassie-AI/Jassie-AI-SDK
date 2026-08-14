@@ -28,9 +28,6 @@ const TEST_IMAGE_URL =
   'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=640';
 const TEST_VIDEO_URL =
   'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241115/cqqkru/1.mp4';
-const TEST_AUDIO_URL =
-  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-
 if (!API_KEY || API_KEY === 'your-api-key-here') {
   console.error('\n  ✗ Please set JASSIE_API_KEY in the .env file\n');
   process.exit(1);
@@ -298,41 +295,6 @@ async function testBoltImageWithAudio() {
   }
 }
 
-async function testBoltAudioInput() {
-  section('9. Bolt — audio input + audio output');
-  try {
-    const stream = client.text.generate({
-      model: 'jassie-bolt',
-      messages: [
-        {
-          role: 'user',
-          content: 'What do you hear? Describe briefly.',
-          audio: TEST_AUDIO_URL,
-        },
-      ],
-      modalities: ['text', 'audio'],
-      speaker: 'chelsie',
-      stream: true,
-      maxTokens: 150,
-    });
-    let audioChunks = 0;
-    let text = '';
-    let gotDone = false;
-    for await (const chunk of stream) {
-      if (chunk.type === 'audio' && chunk.data) audioChunks++;
-      if (chunk.type === 'text') text += chunk.content;
-      if (chunk.type === 'done') gotDone = true;
-    }
-    if (audioChunks > 0 && text.length > 0 && gotDone) {
-      pass('bolt audio input', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}"`);
-    } else {
-      fail('bolt audio input', new Error(`audio=${audioChunks}, text.len=${text.length}, done=${gotDone}`));
-    }
-  } catch (err) {
-    fail('bolt audio input', err);
-  }
-}
-
 async function testPulseSingleImage() {
   section('10. Pulse — single image (non-streaming, should go to Qwen directly)');
   try {
@@ -386,7 +348,6 @@ async function run() {
   console.log(`  Base URL:    https://api.jassie.ai`);
   console.log(`  Test image:  ${TEST_IMAGE_URL.slice(0, 50)}…`);
   console.log(`  Test video:  ${TEST_VIDEO_URL.slice(0, 50)}…`);
-  console.log(`  Test audio:  ${TEST_AUDIO_URL.slice(0, 50)}…`);
 
   header('JASSIE-BOLT PLAIN TEXT');
   await withRetry(testBoltPlainText);
@@ -403,7 +364,6 @@ async function run() {
   header('JASSIE-BOLT AUDIO (should route through JassieAI server)');
   await withRetry(testBoltAudioModality);
   await withRetry(testBoltImageWithAudio);
-  await withRetry(testBoltAudioInput);
 
   header('JASSIE-PULSE (should go to Qwen directly — unchanged)');
   await withRetry(testPulseSingleImage);

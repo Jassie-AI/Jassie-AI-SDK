@@ -29,7 +29,6 @@ export interface Message {
   image?: string | string[];
   images?: string[];
   video?: string | string[];
-  audio?: string;
 }
 
 // ── Models ───────────────────────────────────────────────────────────────────
@@ -85,6 +84,7 @@ export interface TextGenerateParams {
   speaker?: Speaker;
   voiceSample?: string;
   voiceSampleText?: string;
+  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
 export interface TextStreamParams {
@@ -97,6 +97,7 @@ export interface TextStreamParams {
   speaker?: Speaker;
   voiceSample?: string;
   voiceSampleText?: string;
+  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
 export interface ConversationMessage {
@@ -104,7 +105,6 @@ export interface ConversationMessage {
   content?: string;
   images?: string[];
   video?: string[];
-  audio?: string;
 }
 
 export interface ConversationStreamParams {
@@ -117,6 +117,7 @@ export interface ConversationStreamParams {
   speaker?: Speaker;
   voiceSample?: string;
   voiceSampleText?: string;
+  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
 export interface CodeGenerateParams {
