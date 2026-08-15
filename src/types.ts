@@ -49,7 +49,7 @@ export interface Usage {
 // ── Streaming Chunk ──────────────────────────────────────────────────────────
 
 export interface JassieChunk {
-  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'audio' | 'start' | 'done' | 'queue_position';
+  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'start' | 'done' | 'queue_position';
   content?: string;
   done?: boolean;
   data?: string;
@@ -63,15 +63,6 @@ export interface JassieChunk {
   usage?: Usage;
 }
 
-// ── Speakers ─────────────────────────────────────────────────────────────────
-
-/**
- * Voice ID for TTS output. Use a pre-loaded voice name (e.g. the names of
- * .wav files in the server's voices directory) or `"default"` for the
- * model's built-in voice.
- */
-export type Speaker = string;
-
 // ── Request Params ───────────────────────────────────────────────────────────
 
 export interface TextGenerateParams {
@@ -80,10 +71,6 @@ export interface TextGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  modalities?: ('text' | 'audio')[];
-  speaker?: Speaker;
-  voiceSample?: string;
-  voiceSampleText?: string;
   reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
@@ -93,10 +80,6 @@ export interface TextStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  modalities?: ('text' | 'audio')[];
-  speaker?: Speaker;
-  voiceSample?: string;
-  voiceSampleText?: string;
   reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
@@ -113,10 +96,6 @@ export interface ConversationStreamParams {
   max_tokens?: number;
   maxTokens?: number;
   temperature?: number;
-  modalities?: ('text' | 'audio')[];
-  speaker?: Speaker;
-  voiceSample?: string;
-  voiceSampleText?: string;
   reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
 }
 
@@ -167,14 +146,6 @@ export interface MusicGenerateParams {
   lyrics?: string;
   seed?: number;
   duration: number;
-}
-
-export interface TTSParams {
-  text: string;
-  speaker?: Speaker;
-  language?: string;
-  voiceSample?: string;
-  voiceSampleText?: string;
 }
 
 // ── Planner ─────────────────────────────────────────────────────────────────
@@ -240,11 +211,6 @@ export interface MusicTaskResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   musicUrl: string | null;
   expiresOn: string | null;
-}
-
-export interface TTSResponse {
-  audio: string;       // base64-encoded PCM-16 WAV (24 kHz)
-  duration_ms: number;
 }
 
 // ── Image Streaming Events ───────────────────────────────────────────────────

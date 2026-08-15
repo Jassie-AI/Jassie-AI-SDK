@@ -15,7 +15,6 @@ export type {
   MusicModel,
   Usage,
   JassieChunk,
-  Speaker,
   ConversationMessage,
   ConversationStreamParams,
   TextGenerateParams,
@@ -26,13 +25,11 @@ export type {
   Reference,
   VideoGenerateParams,
   MusicGenerateParams,
-  TTSParams,
   PlanTool,
   PlanParams,
   PlanStep,
   PlanResponse,
   TextResponse,
-  TTSResponse,
   ImageTaskResponse,
   VideoTaskResponse,
   MusicTaskResponse,
@@ -57,4 +54,3 @@ export {
 // Streaming
 export { JassieStream } from './streaming/stream.js';
 export { ImageStream } from './streaming/image-stream.js';
-
