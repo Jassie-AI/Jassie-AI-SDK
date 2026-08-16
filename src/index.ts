@@ -51,6 +51,9 @@ export {
   JassieConnectionError,
 } from './errors.js';
 
+// TTS
+export type { Voice, VoicesResponse, TTSSynthesizeParams } from './resources/tts.js';
+
 // Streaming
 export { JassieStream } from './streaming/stream.js';
 export { ImageStream } from './streaming/image-stream.js';
