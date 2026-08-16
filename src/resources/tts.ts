@@ -14,6 +14,10 @@ export interface TTSSynthesizeParams {
   text: string;
   speaker?: string;
   language?: string;
+  /** Base64-encoded reference audio for voice cloning (5-15 seconds recommended). */
+  voice_sample?: string;
+  /** Transcript of the reference audio (improves cloning quality). */
+  voice_sample_text?: string;
 }
 
 export class TTS {
