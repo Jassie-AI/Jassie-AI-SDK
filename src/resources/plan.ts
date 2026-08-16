@@ -13,6 +13,6 @@ export class Plan {
 
   /** Generate an execution plan for a user query. */
   async generate(params: PlanParams): Promise<PlanResponse> {
-    return this.client._request<PlanResponse>('POST', '/v1/plan', params);
+    return this.client._request<PlanResponse>('POST', '/v1/agent-planner', params);
   }
 }
