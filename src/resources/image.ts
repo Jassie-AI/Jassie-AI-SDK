@@ -7,8 +7,8 @@ import type {
 import { poll } from '../polling.js';
 import type { ImageStream } from '../streaming/image-stream.js';
 
-const PIXEL_LITE_MAX_DIM = 1536;
-const PIXEL_LITE_MAX_PIXELS = 1536 * 1536;
+const PIXEL_LITE_MAX_DIM = 2048;
+const PIXEL_LITE_MAX_PIXELS = 2048 * 2048;
 
 /** Clamp dimensions for jassie-pixel-lite and strip unsupported fields. */
 function prepareParams(params: ImageGenerateParams): ImageGenerateParams {
