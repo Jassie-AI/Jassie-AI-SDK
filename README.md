@@ -6,7 +6,7 @@
 
 Official TypeScript SDK for the [Jassie AI](https://jassie.ai) API — built by [Airbin](https://airbin.app).
 
-Generate text, code, images, videos, music, and real-time voice conversations — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
+Generate text, code, images, videos, and music — all from one SDK. Works with Node.js, React, Next.js, Vue, Angular, Svelte, React Native, Deno, Bun, and every JS/TS runtime.
 
 - Zero runtime dependencies
 - Full TypeScript support with strict types
@@ -63,7 +63,7 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 
 | Resource | Accessor | Description |
 |---|---|---|
-| Text | `client.text` | Text generation, multimodal conversations, voice output |
+| Text | `client.text` | Text generation and multimodal conversations |
 | Code | `client.code` | Code generation and refactoring |
 | Image | `client.image` | Image generation with sync/async modes |
 | Video | `client.video` | Video generation with multimodal references |
@@ -77,7 +77,7 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 | Model | Description |
 |---|---|
 | `jassie-pulse` | Lightning-fast text intelligence with million-token context |
-| `jassie-bolt` | Flagship multimodal model — text, images, video input and voice output |
+| `jassie-bolt` | Flagship multimodal model — text, image, and video input with extended thinking |
 
 ### `client.text.generate(params)`
 
@@ -116,9 +116,7 @@ for await (const chunk of stream) {
 | `stream` | `boolean` | No | `false` | Enable real-time streaming |
 | `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
 | `temperature` | `number` | No | `0.7` | Randomness (0 = deterministic, 2 = creative) |
-| `reasoning` | `'xhigh' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth. Higher values produce more thorough reasoning at the cost of latency. |
-| `modalities` | `('text' \| 'audio')[]` | No | — | Output modalities. Include `'audio'` to receive voice output (Bolt only) |
-| `speaker` | `'ethan' \| 'chelsie' \| 'aiden'` | No | — | Voice for audio output (required when modalities includes `'audio'`) |
+| `reasoning` | `'strong' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth. Supported by both Pulse and Bolt. Higher values produce more thorough reasoning at the cost of latency. |
 
 #### Message Type
 
@@ -131,7 +129,7 @@ interface Message {
 }
 ```
 
-> **Note:** The `image`, `video`, `modalities`, and `speaker` fields are only supported by `jassie-bolt`. Pulse is a text-only model.
+> **Note:** The `image` and `video` fields are only supported by `jassie-bolt`. Pulse is a text-only model. Both models support `reasoning`.
 
 ### Response — `TextResponse`
 
@@ -154,17 +152,15 @@ When streaming, the async iterator yields `JassieChunk` objects:
 | `queued` | `position` | Request is queued; `position` is queue position |
 | `text` | `content` | Partial text token |
 | `thinking` | `content` | Model reasoning/thinking token (when `reasoning` is set) |
-| `audio` | `data` | Base64-encoded audio chunk (voice output) |
 | `web_search` | `query` | Web search being performed (jassie-web only) |
 | `done` | `content`, `usage`, `chunks`, `duration_seconds`, `request_id` | Stream complete with final metadata |
 | `error` | `content` | Error message |
 
 ```typescript
 interface JassieChunk {
-  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'start' | 'done' | 'queue_position' | 'audio';
+  type: 'queued' | 'text' | 'thinking' | 'web' | 'web_search' | 'error' | 'start' | 'done' | 'queue_position';
   content?: string;
   done?: boolean;
-  data?: string;         // Base64 audio data
   index?: number;
   chunks?: number;
   position?: number;     // Queue position
@@ -223,83 +219,12 @@ const response = await client.text.generate({
 });
 ```
 
-### Voice Output (Bolt only)
+### Reasoning (Pulse & Bolt)
 
-`jassie-bolt` can stream spoken audio responses. Set `modalities` to include `'audio'` and choose a `speaker`. Three built-in voices are available:
-
-| Speaker | Description |
-|---|---|
-| `ethan` | Male voice |
-| `chelsie` | Female voice |
-| `aiden` | Male voice |
-
-#### Audio-only output
-
-Stream audio chunks with no text. Ideal for voice assistants.
+Enable extended thinking to get more thorough responses. Both `jassie-pulse` and `jassie-bolt` support reasoning. Reasoning tokens are streamed as `thinking` chunks before the final answer.
 
 ```typescript
-const stream = client.text.generate({
-  model: 'jassie-bolt',
-  messages: [{ role: 'user', content: 'Tell me a joke.' }],
-  modalities: ['audio'],
-  speaker: 'aiden',
-  stream: true,
-});
-
-for await (const chunk of stream) {
-  if (chunk.type === 'audio') playAudio(chunk.data); // base64 audio
-  if (chunk.type === 'done') console.log('Finished');
-}
-```
-
-#### Audio + text output
-
-Include both `'text'` and `'audio'` in modalities to receive interleaved text and audio chunks.
-
-```typescript
-const stream = client.text.generate({
-  model: 'jassie-bolt',
-  messages: [
-    { role: 'system', content: 'You are a helpful tutor.' },
-    { role: 'user', content: 'Explain gravity in simple terms.' },
-  ],
-  modalities: ['text', 'audio'],
-  speaker: 'chelsie',
-  stream: true,
-});
-
-for await (const chunk of stream) {
-  if (chunk.type === 'text') process.stdout.write(chunk.content);
-  if (chunk.type === 'audio') playAudio(chunk.data);
-}
-```
-
-#### Voice with multimodal input
-
-Combine voice output with image, video, or audio inputs.
-
-```typescript
-// Describe an image out loud
-const stream = client.text.generate({
-  model: 'jassie-bolt',
-  messages: [
-    {
-      role: 'user',
-      content: 'What do you see in this photo?',
-      image: 'https://example.com/photo.jpg',
-    },
-  ],
-  modalities: ['text', 'audio'],
-  speaker: 'ethan',
-  stream: true,
-});
-```
-
-### Reasoning
-
-Enable extended thinking to get more thorough responses. Reasoning tokens are streamed as `thinking` chunks before the final answer.
-
-```typescript
+// Pulse with reasoning
 const stream = client.text.generate({
   model: 'jassie-pulse',
   messages: [{ role: 'user', content: 'Solve this step by step: 23 * 47 + 89' }],
@@ -311,14 +236,33 @@ for await (const chunk of stream) {
   if (chunk.type === 'thinking') process.stderr.write(chunk.content); // reasoning trace
   if (chunk.type === 'text') process.stdout.write(chunk.content);     // final answer
 }
+
+// Bolt with reasoning + image input
+const stream = client.text.generate({
+  model: 'jassie-bolt',
+  messages: [
+    {
+      role: 'user',
+      content: 'Analyze this diagram and explain the architecture.',
+      image: 'https://example.com/diagram.png',
+    },
+  ],
+  reasoning: 'strong',
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  if (chunk.type === 'thinking') process.stderr.write(chunk.content);
+  if (chunk.type === 'text') process.stdout.write(chunk.content);
+}
 ```
 
 | Level | Description |
 |---|---|
-| `'xhigh'` | Maximum depth — thorough multi-step reasoning |
-| `'medium'` | Balanced reasoning depth |
-| `'low'` | Lightweight reasoning |
-| `'off'` | Disable reasoning |
+| `'strong'` | Maximum depth — the model thinks through problems thoroughly with multi-step chain-of-thought. Best for complex math, logic puzzles, code debugging, and tasks requiring deep analysis. Highest latency. |
+| `'medium'` | Balanced reasoning — the model considers multiple angles without exhaustive exploration. Good for general problem-solving, explanations, and moderate complexity tasks. |
+| `'low'` | Lightweight reasoning — the model performs a quick internal check before responding. Suitable for simple questions that benefit from a brief sanity check. Lowest latency overhead. |
+| `'off'` | No reasoning — the model responds directly without any thinking step. Fastest responses. |
 
 ### Conversation (Multimodal Streaming)
 
@@ -345,7 +289,7 @@ for await (const chunk of stream) {
 | `messages` | `ConversationMessage[]` | **Yes** | — | Conversation messages with optional `images` and `video` arrays |
 | `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
 | `temperature` | `number` | No | `0.7` | Randomness |
-| `reasoning` | `'xhigh' \| 'medium' \| 'low' \| 'off'` | No | — | Extended thinking depth |
+| `reasoning` | `'strong' \| 'medium' \| 'low' \| 'off'` | No | — | Extended thinking depth |
 
 #### ConversationMessage Type
 
@@ -388,7 +332,7 @@ console.log(response.content);
 | `stream` | `boolean` | No | `false` | Enable real-time streaming |
 | `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
 | `temperature` | `number` | No | `0.7` | Randomness (0 = deterministic, 2 = creative) |
-| `reasoning` | `'xhigh' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth |
+| `reasoning` | `'strong' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth |
 
 ### Response
 
@@ -1028,19 +972,6 @@ const imgStream = client.image.statusStream(task.taskId);
 await imgStream.eachEvent((event) => {
   if (event.type === 'preview') setPreview(event.imageUrl);
   if (event.type === 'completed') setFinalUrl(event.imageUrl);
-});
-
-// Bolt voice streaming
-const voiceStream = client.text.generate({
-  model: 'jassie-bolt',
-  messages: [{ role: 'user', content: 'Hello from React Native!' }],
-  modalities: ['text', 'audio'],
-  speaker: 'chelsie',
-  stream: true,
-});
-
-await voiceStream.eachText((text) => {
-  setText((prev) => prev + text);
 });
 ```
 
