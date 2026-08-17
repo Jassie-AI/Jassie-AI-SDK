@@ -24,6 +24,8 @@ Generate text, code, images, videos, music, and real-time voice conversations �
 - [Image Generation](#image-generation)
 - [Video Generation](#video-generation)
 - [Music Generation](#music-generation)
+- [Web Search](#web-search)
+- [Task Planning](#task-planning)
 - [Streaming](#streaming)
 - [Error Handling](#error-handling)
 - [React Native](#react-native)
@@ -255,8 +257,11 @@ Same parameters and response format as [Text Generation](#parameters).
 
 | Model | Description |
 |---|---|
-| `jassie-pixel` | Photorealistic 2K image generation |
+| `jassie-pixel-lite` | Self-hosted 2K image generation (no reference image support) |
+| `jassie-pixel` | Photorealistic 2K image generation with reference image support |
 | `jassie-pixel-x` | 4K ultra-high-resolution image generation |
+
+`jassie-pixel-lite` uses the `/v1/generate-image` endpoint and does **not** support reference images (`image` parameter). Use `jassie-pixel` or `jassie-pixel-x` for image-to-image editing.
 
 Two modes: **v1 (synchronous)** blocks until done, **v2 (asynchronous)** returns a `taskId` immediately.
 
@@ -298,7 +303,7 @@ for await (const event of stream) {
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-pixel' \| 'jassie-pixel-x'` | **Yes** | — | Model (`pixel` = 2K, `pixel-x` = 4K) |
+| `model` | `'jassie-pixel-lite' \| 'jassie-pixel' \| 'jassie-pixel-x'` | **Yes** | — | Model (`pixel-lite` = 2K self-hosted, `pixel` = 2K, `pixel-x` = 4K) |
 | `prompt` | `string` | **Yes** | — | Image description |
 | `image` | `string \| string[]` | No | — | Input image URL(s) for editing or composition (up to 14) |
 | `aspectRatio` | `string` | No | `'1:1'` | `'1:1'`, `'4:3'`, `'3:4'`, `'16:9'`, `'9:16'`, `'3:2'`, `'2:3'`, `'21:9'` |
@@ -465,6 +470,87 @@ if (result.status === 'completed') console.log(result.musicUrl);
 | `status` | `'pending' \| 'processing' \| 'completed' \| 'failed'` | Current status |
 | `musicUrl` | `string \| null` | URL to generated audio (when `completed`) |
 | `expiresOn` | `string \| null` | When the audio URL expires |
+
+---
+
+## Web Search
+
+| Model | Description |
+|---|---|
+| `jassie-web` | Live web search with citation-backed, structured answers |
+
+Use `client.text.generate()` with `model: 'jassie-web'` to get web-grounded responses with source citations.
+
+```typescript
+const response = await client.text.generate({
+  model: 'jassie-web',
+  messages: [{ role: 'user', content: 'What are the latest developments in quantum computing?' }],
+});
+
+console.log(response.content); // Answer with inline citations
+console.log(response.sources); // Array of { title, url, snippet }
+```
+
+### Parameters
+
+Same as [Text Generation](#parameters) — uses `model: 'jassie-web'`.
+
+### Response
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `'text' \| 'error'` | Response type |
+| `content` | `string` | Generated answer with inline source citations |
+| `sources` | `Source[]` | Array of `{ title, url, snippet }` from web search results |
+| `request_id` | `string` | Unique identifier for the request |
+| `chunks` | `number` | Total tokens generated |
+| `duration_seconds` | `number` | Generation time in seconds |
+
+---
+
+## Task Planning
+
+| Model | Description |
+|---|---|
+| `jassie-planner` | Agentic task planner — returns structured DAG of tool-call steps |
+
+Use `client.plan.create()` to analyze a user query and get back a structured execution plan with dependency tracking.
+
+```typescript
+const plan = await client.plan.create({
+  query: 'Write a bedtime story about dragons and create an illustration for it',
+});
+
+if (plan.type === 'task') {
+  for (const step of plan.steps) {
+    console.log(`Step ${step.id}: [${step.tool}] ${step.description}`);
+    console.log(`  Depends on: ${step.depends_on.join(', ') || 'none'}`);
+  }
+} else if (plan.type === 'clarify') {
+  console.log('Need more info:', plan.questions);
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `query` | `string` | **Yes** | — | The user query to plan for |
+| `context` | `Message[]` | No | — | Last 2-3 conversation messages for disambiguation |
+| `tools` | `Tool[]` | No | — | Custom tool definitions on top of the 5 built-in tools |
+| `system_prompt` | `string` | No | — | Platform context appended to the planner prompt |
+
+### Response
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `'chat' \| 'task' \| 'clarify'` | Intent classification |
+| `steps` | `Step[]` | Ordered execution steps (when type is `chat` or `task`) |
+| `steps[].id` | `number` | Unique step identifier |
+| `steps[].tool` | `string` | Tool to invoke: `chat`, `web_search`, `image_generate`, `video_generate`, `music_generate` |
+| `steps[].description` | `string` | What the step does |
+| `steps[].depends_on` | `number[]` | Step IDs that must complete first |
+| `questions` | `string[]` | Clarifying questions (when type is `clarify`) |
 
 ---
 
