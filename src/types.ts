@@ -71,7 +71,7 @@ export interface TextGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
-  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
+  reasoning?: 'deep' | 'balanced' | 'quick' | 'none';
 }
 
 export interface TextStreamParams {
@@ -80,7 +80,7 @@ export interface TextStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
-  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
+  reasoning?: 'deep' | 'balanced' | 'quick' | 'none';
 }
 
 export interface ConversationMessage {
@@ -96,7 +96,7 @@ export interface ConversationStreamParams {
   max_tokens?: number;
   maxTokens?: number;
   temperature?: number;
-  reasoning?: 'xhigh' | 'medium' | 'low' | 'off';
+  reasoning?: 'deep' | 'balanced' | 'quick' | 'none';
 }
 
 export interface CodeGenerateParams {
@@ -105,6 +105,7 @@ export interface CodeGenerateParams {
   stream?: false;
   maxTokens?: number;
   temperature?: number;
+  reasoning?: 'deep' | 'balanced' | 'quick' | 'none';
 }
 
 export interface CodeStreamParams {
@@ -113,6 +114,7 @@ export interface CodeStreamParams {
   stream?: true;
   maxTokens?: number;
   temperature?: number;
+  reasoning?: 'deep' | 'balanced' | 'quick' | 'none';
 }
 
 export interface ImageGenerateParams {
