@@ -760,13 +760,13 @@ async function testMusicGenerateWithLyrics() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testBoltAudioOnly() {
-  section('7a. Bolt Voice — audio-only output (speaker: ethan)');
+  section('7a. Bolt Voice — audio-only output (speaker: adam)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
       modalities: ['audio'],
-      speaker: 'ethan',
+      speaker: 'adam',
       stream: true,
       maxTokens: 100,
     });
@@ -779,23 +779,23 @@ async function testBoltAudioOnly() {
       if (chunk.type === 'done') gotDone = true;
     }
     if (audioChunks > 0 && gotDone) {
-      pass('bolt audio-only (ethan)', `${audioChunks} audio chunks, ${textChunks} text chunks, done: true`);
+      pass('bolt audio-only (adam)', `${audioChunks} audio chunks, ${textChunks} text chunks, done: true`);
     } else {
-      fail('bolt audio-only (ethan)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
+      fail('bolt audio-only (adam)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('bolt audio-only (ethan)', err);
+    fail('bolt audio-only (adam)', err);
   }
 }
 
 async function testBoltAudioText() {
-  section('7b. Bolt Voice — audio + text output (speaker: chelsie)');
+  section('7b. Bolt Voice — audio + text output (speaker: default)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'Tell me a fun fact in one sentence.' }],
       modalities: ['text', 'audio'],
-      speaker: 'chelsie',
+      speaker: 'default',
       stream: true,
       maxTokens: 150,
     });
@@ -808,23 +808,23 @@ async function testBoltAudioText() {
       if (chunk.type === 'done') gotDone = true;
     }
     if (audioChunks > 0 && text.length > 0 && gotDone) {
-      pass('bolt audio+text (chelsie)', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}…"`);
+      pass('bolt audio+text (default)', `${audioChunks} audio chunks, text: "${text.slice(0, 60)}…"`);
     } else {
-      fail('bolt audio+text (chelsie)', new Error(`audioChunks=${audioChunks}, text.length=${text.length}, gotDone=${gotDone}`));
+      fail('bolt audio+text (default)', new Error(`audioChunks=${audioChunks}, text.length=${text.length}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('bolt audio+text (chelsie)', err);
+    fail('bolt audio+text (default)', err);
   }
 }
 
-async function testBoltVoiceAiden() {
-  section('7c. Bolt Voice — audio output (speaker: aiden)');
+async function testBoltVoiceMichael() {
+  section('7c. Bolt Voice — audio output (speaker: michael)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'Count from 1 to 3.' }],
       modalities: ['text', 'audio'],
-      speaker: 'aiden',
+      speaker: 'michael',
       stream: true,
       maxTokens: 50,
     });
@@ -835,12 +835,12 @@ async function testBoltVoiceAiden() {
       if (chunk.type === 'done') gotDone = true;
     }
     if (audioChunks > 0 && gotDone) {
-      pass('bolt voice (aiden)', `${audioChunks} audio chunks`);
+      pass('bolt voice (michael)', `${audioChunks} audio chunks`);
     } else {
-      fail('bolt voice (aiden)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
+      fail('bolt voice (michael)', new Error(`audioChunks=${audioChunks}, gotDone=${gotDone}`));
     }
   } catch (err) {
-    fail('bolt voice (aiden)', err);
+    fail('bolt voice (michael)', err);
   }
 }
 
@@ -857,7 +857,7 @@ async function testBoltVoiceWithImage() {
         },
       ],
       modalities: ['text', 'audio'],
-      speaker: 'ethan',
+      speaker: 'adam',
       stream: true,
       maxTokens: 150,
     });
@@ -1025,7 +1025,7 @@ async function run() {
   header('7. BOLT VOICE OUTPUT');
   await withRetry(testBoltAudioOnly);
   await withRetry(testBoltAudioText);
-  await withRetry(testBoltVoiceAiden);
+  await withRetry(testBoltVoiceMichael);
   await withRetry(testBoltVoiceWithImage);
 
   // ── 8. Error Handling ──
