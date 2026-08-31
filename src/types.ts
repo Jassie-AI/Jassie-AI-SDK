@@ -152,6 +152,26 @@ export interface MusicGenerateParams {
 
 // ── Planner ─────────────────────────────────────────────────────────────────
 
+export type PlanComplexity = 'simple' | 'standard' | 'complex';
+
+export type PlanDomain =
+  | 'research'
+  | 'code'
+  | 'content'
+  | 'infrastructure'
+  | 'design'
+  | 'testing'
+  | 'general';
+
+export type StepStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'skipped';
+
+export type ExecutionStrategy = 'sequential' | 'parallel' | 'best_effort';
+
 export interface PlanTool {
   name: string;
   description: string;
@@ -163,6 +183,15 @@ export interface PlanParams {
   context?: Message[];
   tools?: PlanTool[];
   system_prompt?: string;
+  project_context?: string;
+}
+
+export interface HierarchicalPlanParams extends PlanParams {
+  version?: number;
+  complexity_hint?: PlanComplexity;
+  max_phases?: number;
+  max_steps_per_phase?: number;
+  decompose?: boolean;
 }
 
 export interface PlanStep {
@@ -171,12 +200,54 @@ export interface PlanStep {
   description: string;
   params: Record<string, unknown>;
   depends_on: number[];
+  domain?: PlanDomain;
+  status?: StepStatus;
+  substeps?: PlanStep[];
+  phase_id?: string;
+  retry_count?: number;
+  error?: string;
+  result_summary?: string;
+}
+
+export interface PlanPhase {
+  id: string;
+  title: string;
+  description: string;
+  domain?: PlanDomain;
+  execution_strategy: ExecutionStrategy;
+  steps: PlanStep[];
+  status?: StepStatus;
+  depends_on_phases?: string[];
+}
+
+export interface ArchitectureDecision {
+  decision: string;
+  rationale: string;
 }
 
 export interface PlanResponse {
   type: 'chat' | 'task' | 'clarify';
   steps?: PlanStep[];
   questions?: string[];
+  message?: string;
+}
+
+export interface HierarchicalPlanResponse extends PlanResponse {
+  complexity?: PlanComplexity;
+  title?: string;
+  summary?: string;
+  phases?: PlanPhase[];
+  architecture_decisions?: ArchitectureDecision[];
+}
+
+export interface DecomposeParams {
+  step: PlanStep;
+  tools: PlanTool[];
+  context?: string;
+}
+
+export interface DecomposeResponse {
+  substeps: PlanStep[];
 }
 
 // ── Response Types ───────────────────────────────────────────────────────────
