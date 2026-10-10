@@ -1,21 +1,18 @@
 /**
  * Jassie AI SDK — Text Routing Tests
  *
- * Focused tests to verify that jassie-bolt routes all media requests
- * through the JassieAI server first, and that jassie-pulse still goes
- * directly to Qwen for media.
+ * Focused tests to verify that jassie-bolt routes text and media requests
+ * through the JassieAI server first (box first, Qwen fallback).
  *
  * Scenarios tested:
- *   1. jassie-bolt + plain text       → ai.jassie.ai/v1/generate-text
- *   2. jassie-bolt + single image     → ai.jassie.ai/v1/conversation
- *   3. jassie-bolt + multiple images  → ai.jassie.ai/v1/conversation
- *   4. jassie-bolt + single video     → ai.jassie.ai/v1/conversation
- *   5. jassie-bolt + multiple videos  → ai.jassie.ai/v1/conversation
- *   6. jassie-bolt + audio modality   → ai.jassie.ai/v1/conversation
- *   7. jassie-bolt + image + audio    → ai.jassie.ai/v1/conversation
- *   8. jassie-bolt + audio input      → ai.jassie.ai/v1/conversation
- *   9. jassie-pulse + image           → qwen directly (unchanged)
- *  10. jassie-pulse + plain text      → qwen directly (unchanged)
+ *   1. jassie-bolt + plain text              → ai.jassie.ai/v1/generate-text
+ *   2. jassie-bolt + plain text (streaming)  → ai.jassie.ai/v1/generate-text
+ *   3. jassie-bolt + single image            → ai.jassie.ai/v1/conversation
+ *   4. jassie-bolt + multiple images         → ai.jassie.ai/v1/conversation
+ *   5. jassie-bolt + single video            → ai.jassie.ai/v1/conversation
+ *   6. jassie-bolt + multiple videos         → ai.jassie.ai/v1/conversation
+ *   7. jassie-bolt + audio modality          → ai.jassie.ai/v1/conversation
+ *   8. jassie-bolt + image + audio           → ai.jassie.ai/v1/conversation
  *
  * Usage:
  *   node --env-file=.env test-text-routing.mjs
@@ -295,48 +292,6 @@ async function testBoltImageWithAudio() {
   }
 }
 
-async function testPulseSingleImage() {
-  section('10. Pulse — single image (non-streaming, should go to Qwen directly)');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [
-        {
-          role: 'user',
-          content: 'Describe this image in one sentence.',
-          image: TEST_IMAGE_URL,
-        },
-      ],
-      maxTokens: 150,
-    });
-    if (res && res.content) {
-      pass('pulse single image', `content: "${res.content.slice(0, 80)}"`);
-    } else {
-      fail('pulse single image', new Error(`Unexpected: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('pulse single image', err);
-  }
-}
-
-async function testPulsePlainText() {
-  section('11. Pulse — plain text (non-streaming)');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
-      maxTokens: 100,
-    });
-    if (res && res.content) {
-      pass('pulse plain text', `content: "${res.content.slice(0, 80)}"`);
-    } else {
-      fail('pulse plain text', new Error(`Unexpected: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('pulse plain text', err);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // RUNNER
 // ═══════════════════════════════════════════════════════════════════════════
@@ -364,10 +319,6 @@ async function run() {
   header('JASSIE-BOLT AUDIO (should route through JassieAI server)');
   await withRetry(testBoltAudioModality);
   await withRetry(testBoltImageWithAudio);
-
-  header('JASSIE-PULSE (should go to Qwen directly — unchanged)');
-  await withRetry(testPulseSingleImage);
-  await withRetry(testPulsePlainText);
 
   // ── Summary ──
   console.log(`\n${'═'.repeat(60)}`);

@@ -33,7 +33,7 @@ export interface Message {
 
 // ── Models ───────────────────────────────────────────────────────────────────
 
-export type TextModel = 'jassie-pulse' | 'jassie-bolt';
+export type TextModel = 'jassie-bolt';
 export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x' | 'jassie-pixel-lite';
 export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema';

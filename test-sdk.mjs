@@ -1,7 +1,7 @@
 /**
  * Jassie AI SDK — Comprehensive Test Suite
  *
- * Tests every feature: text (Pulse & Bolt), code, image (Pixel & Pixel-X),
+ * Tests every feature: text (Bolt), code, image (Pixel & Pixel-X),
  * video (Vibe, Motion, Cinema), music (Beat), voice (TTS, STT, voice call),
  * web search, vision (image & video), streaming, error handling.
  *
@@ -146,102 +146,11 @@ const MUSIC_TASK_SCHEMA = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. TEXT GENERATION — JASSIE PULSE
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function testPulseNonStreaming() {
-  section('1a. Pulse — non-streaming');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'Say hello in one sentence.' }],
-      maxTokens: 100,
-      temperature: 0.7,
-    });
-    if (res && res.content) {
-      pass('pulse non-streaming', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse non-streaming');
-    } else {
-      fail('pulse non-streaming', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('pulse non-streaming', err);
-  }
-}
-
-async function testPulseStreaming() {
-  section('1b. Pulse — streaming (for-await-of)');
-  try {
-    const stream = client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'Count from 1 to 5.' }],
-      stream: true,
-      maxTokens: 100,
-    });
-    let chunks = 0;
-    let text = '';
-    for await (const chunk of stream) {
-      chunks++;
-      if (chunk.type === 'text') text += chunk.content;
-    }
-    if (chunks > 0 && text.length > 0) {
-      pass('pulse streaming', `${chunks} chunks, text: "${text.slice(0, 80)}…"`);
-    } else {
-      fail('pulse streaming', new Error('No chunks received'));
-    }
-  } catch (err) {
-    fail('pulse streaming', err);
-  }
-}
-
-async function testPulseFinalText() {
-  section('1c. Pulse — streaming finalText()');
-  try {
-    const stream = client.text.generate({
-      model: 'jassie-pulse',
-      messages: [{ role: 'user', content: 'Say "SDK test passed" and nothing else.' }],
-      stream: true,
-      maxTokens: 50,
-    });
-    const text = await stream.finalText();
-    if (text && text.length > 0) {
-      pass('pulse finalText()', `"${text.slice(0, 80)}"`);
-    } else {
-      fail('pulse finalText()', new Error('Empty result'));
-    }
-  } catch (err) {
-    fail('pulse finalText()', err);
-  }
-}
-
-async function testPulseSystemMessage() {
-  section('1d. Pulse — system message');
-  try {
-    const res = await client.text.generate({
-      model: 'jassie-pulse',
-      messages: [
-        { role: 'system', content: 'You are a pirate. Respond only in pirate speak.' },
-        { role: 'user', content: 'How are you today?' },
-      ],
-      maxTokens: 100,
-    });
-    if (res && res.content) {
-      pass('pulse system message', `content: "${res.content.slice(0, 80)}…"`);
-      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'pulse system message');
-    } else {
-      fail('pulse system message', new Error(`Unexpected response: ${JSON.stringify(res)}`));
-    }
-  } catch (err) {
-    fail('pulse system message', err);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 2. TEXT GENERATION — JASSIE BOLT
+// 1. TEXT GENERATION — JASSIE BOLT
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testBoltNonStreaming() {
-  section('2a. Bolt — non-streaming');
+  section('1a. Bolt — non-streaming');
   try {
     const res = await client.text.generate({
       model: 'jassie-bolt',
@@ -260,7 +169,7 @@ async function testBoltNonStreaming() {
 }
 
 async function testBoltStreaming() {
-  section('2b. Bolt — streaming (for-await-of)');
+  section('1b. Bolt — streaming (for-await-of)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -285,7 +194,7 @@ async function testBoltStreaming() {
 }
 
 async function testBoltFinalText() {
-  section('2c. Bolt — streaming finalText()');
+  section('1c. Bolt — streaming finalText()');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -304,8 +213,30 @@ async function testBoltFinalText() {
   }
 }
 
+async function testBoltSystemMessage() {
+  section('1d. Bolt — system message');
+  try {
+    const res = await client.text.generate({
+      model: 'jassie-bolt',
+      messages: [
+        { role: 'system', content: 'You are a pirate. Respond only in pirate speak.' },
+        { role: 'user', content: 'How are you today?' },
+      ],
+      maxTokens: 100,
+    });
+    if (res && res.content) {
+      pass('bolt system message', `content: "${res.content.slice(0, 80)}…"`);
+      verifyShape(res, TEXT_RESPONSE_SCHEMA, 'bolt system message');
+    } else {
+      fail('bolt system message', new Error(`Unexpected response: ${JSON.stringify(res)}`));
+    }
+  } catch (err) {
+    fail('bolt system message', err);
+  }
+}
+
 async function testBoltImageVision() {
-  section('2d. Bolt — single image vision');
+  section('1e. Bolt — single image vision');
   try {
     const res = await client.text.generate({
       model: 'jassie-bolt',
@@ -330,7 +261,7 @@ async function testBoltImageVision() {
 }
 
 async function testBoltMultiImageVision() {
-  section('2e. Bolt — multiple image vision');
+  section('1f. Bolt — multiple image vision');
   try {
     const res = await client.text.generate({
       model: 'jassie-bolt',
@@ -355,7 +286,7 @@ async function testBoltMultiImageVision() {
 }
 
 async function testBoltVideoVision() {
-  section('2f. Bolt — single video vision (streaming)');
+  section('1g. Bolt — single video vision (streaming)');
   try {
     const stream = videoVisionClient.text.generate({
       model: 'jassie-bolt',
@@ -381,7 +312,7 @@ async function testBoltVideoVision() {
 }
 
 async function testBoltMultiVideoVision() {
-  section('2g. Bolt — multiple video vision (streaming)');
+  section('1h. Bolt — multiple video vision (streaming)');
   try {
     const stream = videoVisionClient.text.generate({
       model: 'jassie-bolt',
@@ -407,11 +338,11 @@ async function testBoltMultiVideoVision() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 3. CODE GENERATION — JASSIE CODE
+// 2. CODE GENERATION — JASSIE CODE
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testCodeNonStreaming() {
-  section('3a. Code — non-streaming');
+  section('2a. Code — non-streaming');
   try {
     const res = await client.code.generate({
       model: 'jassie-code',
@@ -432,7 +363,7 @@ async function testCodeNonStreaming() {
 }
 
 async function testCodeStreaming() {
-  section('3b. Code — streaming');
+  section('2b. Code — streaming');
   try {
     const stream = client.code.generate({
       model: 'jassie-code',
@@ -459,11 +390,11 @@ async function testCodeStreaming() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X
+// 3. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testImagePixel() {
-  section('4a. Image — Pixel (text-to-image)');
+  section('3a. Image — Pixel (text-to-image)');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
@@ -483,7 +414,7 @@ async function testImagePixel() {
 }
 
 async function testImagePixelX() {
-  section('4b. Image — Pixel-X (text-to-image, 4K)');
+  section('3b. Image — Pixel-X (text-to-image, 4K)');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel-x',
@@ -503,7 +434,7 @@ async function testImagePixelX() {
 }
 
 async function testImagePixelCustomSize() {
-  section('4e. Image — Pixel with custom width/height');
+  section('3e. Image — Pixel with custom width/height');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
@@ -524,7 +455,7 @@ async function testImagePixelCustomSize() {
 }
 
 async function testImagePixelXCustomSize() {
-  section('4f. Image — Pixel-X with custom width/height (4K)');
+  section('3f. Image — Pixel-X with custom width/height (4K)');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel-x',
@@ -545,7 +476,7 @@ async function testImagePixelXCustomSize() {
 }
 
 async function testImageWithReference() {
-  section('4c. Image — Pixel with reference image');
+  section('3c. Image — Pixel with reference image');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
@@ -565,7 +496,7 @@ async function testImageWithReference() {
 }
 
 async function testImageWithMultiReference() {
-  section('4d. Image — Pixel with multiple reference images');
+  section('3d. Image — Pixel with multiple reference images');
   try {
     const res = await client.image.generate({
       model: 'jassie-pixel',
@@ -585,11 +516,11 @@ async function testImageWithMultiReference() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. VIDEO GENERATION — JASSIE VIBE, MOTION, CINEMA
+// 4. VIDEO GENERATION — JASSIE VIBE, MOTION, CINEMA
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testVideoGenerate(model, label) {
-  section(`5. Video — ${label} generate`);
+  section(`4. Video — ${label} generate`);
   try {
     const task = await client.video.generate({
       model,
@@ -611,7 +542,7 @@ async function testVideoGenerate(model, label) {
 }
 
 async function testVideoStatus(taskId, label) {
-  section(`5. Video — ${label} status check`);
+  section(`4. Video — ${label} status check`);
   if (!taskId) {
     fail(`video.status (${label})`, new Error('No taskId from previous test'));
     return;
@@ -630,7 +561,7 @@ async function testVideoStatus(taskId, label) {
 }
 
 async function testVideoStatusPolling(taskId, label) {
-  section(`5. Video — ${label} poll to completion`);
+  section(`4. Video — ${label} poll to completion`);
   if (!taskId) {
     fail(`video.poll (${label})`, new Error('No taskId from previous test'));
     return;
@@ -660,11 +591,11 @@ async function testVideoStatusPolling(taskId, label) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 6. MUSIC GENERATION — JASSIE BEAT
+// 5. MUSIC GENERATION — JASSIE BEAT
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testMusicGenerate() {
-  section('6a. Music — generate (start async task)');
+  section('5a. Music — generate (start async task)');
   try {
     const task = await client.music.generate({
       model: 'jassie-beat',
@@ -687,7 +618,7 @@ async function testMusicGenerate() {
 }
 
 async function testMusicStatus(taskId) {
-  section('6b. Music — status (check task)');
+  section('5b. Music — status (check task)');
   if (!taskId) {
     fail('music.status', new Error('No taskId from previous test'));
     return;
@@ -706,7 +637,7 @@ async function testMusicStatus(taskId) {
 }
 
 async function testMusicStatusPolling(taskId) {
-  section('6c. Music — poll to completion');
+  section('5c. Music — poll to completion');
   if (!taskId) {
     fail('music.poll', new Error('No taskId from previous test'));
     return;
@@ -736,7 +667,7 @@ async function testMusicStatusPolling(taskId) {
 }
 
 async function testMusicGenerateWithLyrics() {
-  section('6d. Music — generate with lyrics');
+  section('5d. Music — generate with lyrics');
   try {
     const task = await client.music.generate({
       model: 'jassie-beat',
@@ -756,11 +687,11 @@ async function testMusicGenerateWithLyrics() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. BOLT VOICE OUTPUT — AUDIO STREAMING VIA text.generate()
+// 6. BOLT VOICE OUTPUT — AUDIO STREAMING VIA text.generate()
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testBoltAudioOnly() {
-  section('7a. Bolt Voice — audio-only output (speaker: adam)');
+  section('6a. Bolt Voice — audio-only output (speaker: adam)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -789,7 +720,7 @@ async function testBoltAudioOnly() {
 }
 
 async function testBoltAudioText() {
-  section('7b. Bolt Voice — audio + text output (speaker: default)');
+  section('6b. Bolt Voice — audio + text output (speaker: default)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -818,7 +749,7 @@ async function testBoltAudioText() {
 }
 
 async function testBoltVoiceMichael() {
-  section('7c. Bolt Voice — audio output (speaker: michael)');
+  section('6c. Bolt Voice — audio output (speaker: michael)');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -845,7 +776,7 @@ async function testBoltVoiceMichael() {
 }
 
 async function testBoltVoiceWithImage() {
-  section('7d. Bolt Voice — audio output with image input');
+  section('6d. Bolt Voice — audio output with image input');
   try {
     const stream = client.text.generate({
       model: 'jassie-bolt',
@@ -880,11 +811,11 @@ async function testBoltVoiceWithImage() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 8. ERROR HANDLING
+// 7. ERROR HANDLING
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testAuthError() {
-  section('8a. Error — invalid API key');
+  section('7a. Error — invalid API key');
   try {
     const badClient = new JassieAI({ apiKey: 'invalid-key-12345' });
     await badClient.text.generate({
@@ -903,7 +834,7 @@ async function testAuthError() {
 }
 
 async function testMissingApiKey() {
-  section('8b. Error — missing API key');
+  section('7b. Error — missing API key');
   try {
     new JassieAI({ apiKey: '' });
     fail('missing key', new Error('Expected constructor to throw'));
@@ -917,14 +848,14 @@ async function testMissingApiKey() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 9. STREAMING INFRASTRUCTURE
+// 8. STREAMING INFRASTRUCTURE
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testStreamAbort() {
-  section('9a. Stream — abort mid-stream');
+  section('8a. Stream — abort mid-stream');
   try {
     const stream = client.text.generate({
-      model: 'jassie-pulse',
+      model: 'jassie-bolt',
       messages: [{ role: 'user', content: 'Write a 500-word essay about space exploration.' }],
       stream: true,
       maxTokens: 500,
@@ -963,30 +894,24 @@ async function run() {
   console.log(`  Test image:  ${TEST_IMAGE_URL.slice(0, 50)}…`);
   console.log(`  Test video:  ${TEST_VIDEO_URL.slice(0, 50)}…`);
 
-  // ── 1. Text Generation — Jassie Pulse ──
-  header('1. TEXT GENERATION — JASSIE PULSE');
-  await withRetry(testPulseNonStreaming);
-  await withRetry(testPulseStreaming);
-  await withRetry(testPulseFinalText);
-  await withRetry(testPulseSystemMessage);
-
-  // ── 2. Text Generation — Jassie Bolt ──
-  header('2. TEXT GENERATION — JASSIE BOLT');
+  // ── 1. Text Generation — Jassie Bolt ──
+  header('1. TEXT GENERATION — JASSIE BOLT');
   await withRetry(testBoltNonStreaming);
   await withRetry(testBoltStreaming);
   await withRetry(testBoltFinalText);
+  await withRetry(testBoltSystemMessage);
   await withRetry(testBoltImageVision);
   await withRetry(testBoltMultiImageVision);
   await withRetry(testBoltVideoVision);
   await withRetry(testBoltMultiVideoVision);
 
-  // ── 3. Code Generation — Jassie Code ──
-  header('3. CODE GENERATION — JASSIE CODE');
+  // ── 2. Code Generation — Jassie Code ──
+  header('2. CODE GENERATION — JASSIE CODE');
   await withRetry(testCodeNonStreaming);
   await withRetry(testCodeStreaming);
 
-  // ── 4. Image Generation — Jassie Pixel & Pixel-X ──
-  header('4. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X');
+  // ── 3. Image Generation — Jassie Pixel & Pixel-X ──
+  header('3. IMAGE GENERATION — JASSIE PIXEL & PIXEL-X');
   await withRetry(testImagePixel);
   await withRetry(testImagePixelX);
   await withRetry(testImagePixelCustomSize);
@@ -994,9 +919,9 @@ async function run() {
   await withRetry(testImageWithReference);
   await withRetry(testImageWithMultiReference);
 
-  // ── 5. Video Generation — Vibe, Motion ──
+  // ── 4. Video Generation — Vibe, Motion ──
   // Submit video tasks first, then status check, then poll in parallel.
-  header('5. VIDEO GENERATION — JASSIE VIBE, MOTION');
+  header('4. VIDEO GENERATION — JASSIE VIBE, MOTION');
 
   const vibeTaskId = await withRetry(() => testVideoGenerate('jassie-vibe', 'Vibe 720p'));
   const motionTaskId = await withRetry(() => testVideoGenerate('jassie-motion', 'Motion 1080p'));
@@ -1014,27 +939,27 @@ async function run() {
     withRetry(() => testVideoStatusPolling(cinmeaTaskId, 'Cinema 1080p')),
   ]);
 
-  // ── 6. Music Generation — Jassie Beat ──
-  header('6. MUSIC GENERATION — JASSIE BEAT');
+  // ── 5. Music Generation — Jassie Beat ──
+  header('5. MUSIC GENERATION — JASSIE BEAT');
   const musicTaskId = await withRetry(testMusicGenerate);
   await withRetry(() => testMusicStatus(musicTaskId));
   await withRetry(() => testMusicStatusPolling(musicTaskId));
   await withRetry(testMusicGenerateWithLyrics);
 
-  // ── 7. Bolt Voice Output ──
-  header('7. BOLT VOICE OUTPUT');
+  // ── 6. Bolt Voice Output ──
+  header('6. BOLT VOICE OUTPUT');
   await withRetry(testBoltAudioOnly);
   await withRetry(testBoltAudioText);
   await withRetry(testBoltVoiceMichael);
   await withRetry(testBoltVoiceWithImage);
 
-  // ── 8. Error Handling ──
-  header('8. ERROR HANDLING');
+  // ── 7. Error Handling ──
+  header('7. ERROR HANDLING');
   await testAuthError();
   await testMissingApiKey();
 
-  // ── 9. Streaming Infrastructure ──
-  header('9. STREAMING INFRASTRUCTURE');
+  // ── 8. Streaming Infrastructure ──
+  header('8. STREAMING INFRASTRUCTURE');
   await withRetry(testStreamAbort);
 
   // ── Summary ──

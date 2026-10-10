@@ -76,7 +76,6 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 
 | Model | Description |
 |---|---|
-| `jassie-pulse` | Lightning-fast text intelligence with million-token context |
 | `jassie-bolt` | Flagship multimodal model — text, image, and video input with extended thinking |
 
 ### `client.text.generate(params)`
@@ -86,7 +85,7 @@ Returns a `Promise<TextResponse>` when `stream` is `false` (default), or a `Jass
 ```typescript
 // Non-streaming
 const response = await client.text.generate({
-  model: 'jassie-pulse',
+  model: 'jassie-bolt',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Explain how DNS works.' },
@@ -97,7 +96,7 @@ console.log(response.content);
 
 // Streaming
 const stream = client.text.generate({
-  model: 'jassie-pulse',
+  model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Write a poem about the ocean.' }],
   stream: true,
 });
@@ -111,12 +110,12 @@ for await (const chunk of stream) {
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-pulse' \| 'jassie-bolt'` | **Yes** | — | Model to use |
+| `model` | `'jassie-bolt'` | **Yes** | — | Model to use |
 | `messages` | `Message[]` | **Yes** | — | Array of conversation messages |
 | `stream` | `boolean` | No | `false` | Enable real-time streaming |
 | `maxTokens` | `number` | No | `5000` | Maximum tokens in the response |
 | `temperature` | `number` | No | `0.7` | Randomness (0 = deterministic, 2 = creative) |
-| `reasoning` | `'strong' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth. Supported by both Pulse and Bolt. Higher values produce more thorough reasoning at the cost of latency. |
+| `reasoning` | `'strong' \| 'medium' \| 'low' \| 'off'` | No | — | Controls extended thinking depth. Higher values produce more thorough reasoning at the cost of latency. |
 
 #### Message Type
 
@@ -129,7 +128,7 @@ interface Message {
 }
 ```
 
-> **Note:** The `image` and `video` fields are only supported by `jassie-bolt`. Pulse is a text-only model. Both models support `reasoning`.
+> **Note:** `jassie-bolt` accepts `image` and `video` inputs and supports `reasoning`.
 
 ### Response — `TextResponse`
 
@@ -219,14 +218,14 @@ const response = await client.text.generate({
 });
 ```
 
-### Reasoning (Pulse & Bolt)
+### Reasoning
 
-Enable extended thinking to get more thorough responses. Both `jassie-pulse` and `jassie-bolt` support reasoning. Reasoning tokens are streamed as `thinking` chunks before the final answer.
+Enable extended thinking to get more thorough responses. `jassie-bolt` supports reasoning. Reasoning tokens are streamed as `thinking` chunks before the final answer.
 
 ```typescript
-// Pulse with reasoning
+// Bolt with reasoning
 const stream = client.text.generate({
-  model: 'jassie-pulse',
+  model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Solve this step by step: 23 * 47 + 89' }],
   reasoning: 'medium',
   stream: true,
@@ -813,7 +812,7 @@ Returned by `text.generate({ stream: true })`, `code.generate({ stream: true })`
 
 ```typescript
 const stream = client.text.generate({
-  model: 'jassie-pulse',
+  model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Hello!' }],
   stream: true,
 });
@@ -953,7 +952,7 @@ const client = new JassieAI({ apiKey: 'your-api-key' });
 
 // Text streaming
 const stream = client.text.generate({
-  model: 'jassie-pulse',
+  model: 'jassie-bolt',
   messages: [{ role: 'user', content: 'Hello from React Native!' }],
   stream: true,
 });
@@ -982,7 +981,7 @@ const streamRef = useRef<{ abort: () => void } | null>(null);
 
 const send = async (prompt: string) => {
   const stream = client.text.generate({
-    model: 'jassie-pulse',
+    model: 'jassie-bolt',
     messages: [{ role: 'user', content: prompt }],
     stream: true,
   });
