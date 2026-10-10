@@ -33,7 +33,12 @@ export interface Message {
 
 // ── Models ───────────────────────────────────────────────────────────────────
 
-export type TextModel = 'jassie-bolt';
+/**
+ * @deprecated `jassie-pulse` was folded into `jassie-bolt`; the API still
+ * accepts it and answers with Bolt. Use `'jassie-bolt'`. Removed in 2.0.
+ */
+export type DeprecatedTextModel = 'jassie-pulse';
+export type TextModel = 'jassie-bolt' | DeprecatedTextModel;
 export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x' | 'jassie-pixel-lite';
 export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema';
