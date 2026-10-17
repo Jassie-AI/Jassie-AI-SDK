@@ -41,7 +41,10 @@ export type DeprecatedTextModel = 'jassie-pulse';
 export type TextModel = 'jassie-bolt' | DeprecatedTextModel;
 export type CodeModel = 'jassie-code';
 export type ImageModel = 'jassie-pixel' | 'jassie-pixel-x' | 'jassie-pixel-lite';
-export type VideoModel = 'jassie-vibe' | 'jassie-motion' | 'jassie-cinema';
+/** Retired video models (Seedance, until 2026-10-17); the API makes them with `jassie-premiere`. */
+export type DeprecatedVideoModel = 'jassie-vibe' | 'jassie-motion';
+/** `jassie-premiere`: 720p; `jassie-cinema`: 1080p. Both Wan 3.0, 2–30 s with sound. */
+export type VideoModel = 'jassie-premiere' | 'jassie-cinema' | DeprecatedVideoModel;
 export type MusicModel = 'jassie-beat';
 // ── Usage ────────────────────────────────────────────────────────────────────
 
@@ -138,7 +141,8 @@ export interface Reference {
 }
 
 export interface VideoGenerateParams {
-  model: VideoModel;
+  /** Defaults to `jassie-premiere` (720p). */
+  model?: VideoModel;
   prompt: string;
   duration?: number;
   references?: Reference[];

@@ -2,7 +2,7 @@
  * Jassie AI SDK — Comprehensive Test Suite
  *
  * Tests every feature: text (Bolt), code, image (Pixel & Pixel-X),
- * video (Vibe, Motion, Cinema), music (Beat), voice (TTS, STT, voice call),
+ * video (Premiere, Cinema), music (Beat), voice (TTS, STT, voice call),
  * web search, vision (image & video), streaming, error handling.
  *
  * Usage:
@@ -516,7 +516,7 @@ async function testImageWithMultiReference() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. VIDEO GENERATION — JASSIE VIBE, MOTION, CINEMA
+// 4. VIDEO GENERATION — JASSIE PREMIERE, CINEMA
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function testVideoGenerate(model, label) {
@@ -919,24 +919,21 @@ async function run() {
   await withRetry(testImageWithReference);
   await withRetry(testImageWithMultiReference);
 
-  // ── 4. Video Generation — Vibe, Motion ──
+  // ── 4. Video Generation — Premiere ──
   // Submit video tasks first, then status check, then poll in parallel.
-  header('4. VIDEO GENERATION — JASSIE VIBE, MOTION');
+  header('4. VIDEO GENERATION — JASSIE PREMIERE');
 
-  const vibeTaskId = await withRetry(() => testVideoGenerate('jassie-vibe', 'Vibe 720p'));
-  const motionTaskId = await withRetry(() => testVideoGenerate('jassie-motion', 'Motion 1080p'));
-  const cinmeaTaskId = await withRetry(() => testVideoGenerate('jassie-cinema', 'Cinema'));
+  const premiereTaskId = await withRetry(() => testVideoGenerate('jassie-premiere', 'Premiere 720p'));
+  const cinemaTaskId = await withRetry(() => testVideoGenerate('jassie-cinema', 'Cinema 1080p'));
 
-  await withRetry(() => testVideoStatus(vibeTaskId, 'Vibe 720p'));
-  await withRetry(() => testVideoStatus(motionTaskId, 'Motion 1080p'));
-  await withRetry(() => testVideoStatus(cinmeaTaskId, 'Cinema 1080p'));
+  await withRetry(() => testVideoStatus(premiereTaskId, 'Premiere 720p'));
+  await withRetry(() => testVideoStatus(cinemaTaskId, 'Cinema 1080p'));
 
-  // Poll all video models in parallel to save time
-  console.log('\n    ⏳ Polling all video models in parallel…');
+  // Poll both video models in parallel to save time
+  console.log('\n    ⏳ Polling both video models in parallel…');
   await Promise.all([
-    withRetry(() => testVideoStatusPolling(vibeTaskId, 'Vibe 720p')),
-    withRetry(() => testVideoStatusPolling(motionTaskId, 'Motion 1080p')),
-    withRetry(() => testVideoStatusPolling(cinmeaTaskId, 'Cinema 1080p')),
+    withRetry(() => testVideoStatusPolling(premiereTaskId, 'Premiere 720p')),
+    withRetry(() => testVideoStatusPolling(cinemaTaskId, 'Cinema 1080p')),
   ]);
 
   // ── 5. Music Generation — Jassie Beat ──

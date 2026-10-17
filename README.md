@@ -489,9 +489,10 @@ type ImageStreamEvent =
 
 | Model | Description |
 |---|---|
-| `jassie-vibe` | 720p HD video generation |
-| `jassie-motion` | 1080p Full-HD video generation |
-| `jassie-cinema` | 1080p cinematic video generation with multimodal references |
+| `jassie-premiere` | 720p video, 2–30 s with sound (dialogue, effects, music); text, first / last frame, or image / video / audio references |
+| `jassie-cinema` | The same at 1080p |
+
+`jassie-vibe` and `jassie-motion` are retired: the API makes them with `jassie-premiere`. Videos on Jassie plans are up to 5 s.
 
 Video generation is **asynchronous** — `generate()` returns a `taskId` immediately.
 
@@ -507,11 +508,11 @@ Check task status. Pass polling options to auto-poll until done. Returns `Promis
 
 Cancel a pending or in-progress video generation task. Returns `Promise<VideoTaskResponse>`.
 
-### Vibe & Motion
+### Premiere & Cinema
 
 ```typescript
 const task = await client.video.generate({
-  model: 'jassie-vibe',
+  model: 'jassie-premiere',
   prompt: 'A calm ocean wave crashing on a sandy beach',
   duration: 5,
   aspectRatio: '16:9',
@@ -527,21 +528,21 @@ const result = await client.video.status(task.taskId, {
 if (result.status === 'succeeded') console.log(result.videoUrl);
 ```
 
-#### Vibe & Motion Parameters
+#### Video Parameters
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-vibe' \| 'jassie-motion'` | **Yes** | — | Model (`vibe` = 720p, `motion` = 1080p) |
+| `model` | `'jassie-premiere' \| 'jassie-cinema'` | No | `'jassie-premiere'` | `premiere` = 720p, `cinema` = 1080p |
 | `prompt` | `string` | **Yes** | — | Video description |
-| `duration` | `number` | No | `5` | Duration in seconds |
-| `references` | `Reference[]` | No | — | Reference(s) for style guidance. Mutually exclusive with `firstFrame`/`lastFrame`. |
+| `duration` | `number` | No | `5` | Whole seconds, 2–30 (up to 5 on Jassie plans) |
+| `references` | `Reference[]` | No | — | Images, videos and audio clips to guide the video (up to 10 / 5 / 5). Mutually exclusive with `firstFrame`/`lastFrame`. |
 | `firstFrame` | `string` | No | — | Starting frame image URL |
 | `lastFrame` | `string` | No | — | Ending frame image URL |
-| `aspectRatio` | `string` | No | `'16:9'` | `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'`, `'21:9'`, `'adaptive'` |
+| `aspectRatio` | `string` | No | `'16:9'` | `'16:9'`, `'4:3'`, `'1:1'`, `'3:4'`, `'9:16'`, `'adaptive'` |
 
-### Cinema
+### References
 
-`jassie-cinema` supports multimodal references — pass images, videos, and audio clips to guide generation. Up to 9 images, 3 videos, and 3 audio clips per request.
+Both models take multimodal references — pass images, videos, and audio clips to guide generation. Up to 10 images, 5 videos, and 5 audio clips per request (videos and audio up to 15 s in total each).
 
 ```typescript
 // Text-to-video
