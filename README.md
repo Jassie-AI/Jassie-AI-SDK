@@ -18,6 +18,7 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 ## Table of Contents
 
 - [Installation](#installation)
+- [Getting an API key](#getting-an-api-key)
 - [Setup](#setup)
 - [Text Generation](#text-generation)
 - [Code Generation](#code-generation)
@@ -38,6 +39,23 @@ Generate text, code, images, videos, and music — all from one SDK. Works with 
 ```bash
 npm install jassie-ai
 ```
+
+---
+
+## Getting an API key
+
+API keys come with the **Pro, Studio and Apex** plans — they aren't available on Guest or Free.
+
+1. Be on a paid plan ([jassie.ai/pricing](https://jassie.ai/pricing)) with a valid card on file.
+2. In **Account → API** ([jassie.ai/account](https://jassie.ai/account)), turn on **Pay as you go** and create a key.
+
+**API usage is billed per use, on top of your plan** — it never counts against (or is covered by) your plan's
+limits. You're invoiced once a month at the [API prices](https://jassie.ai/pricing#api), up to a monthly spend
+limit you set. If your account leaves its paid plan or has no valid card, Pay as you go turns off and your keys
+stop working until you turn it back on. Details: [jassie.ai/developers](https://jassie.ai/developers).
+
+Keep keys secret — never put one in client-side code or a public repository; you're billed for everything made
+with it. A key that may have leaked should be deleted in Account → API.
 
 ---
 
@@ -492,7 +510,7 @@ type ImageStreamEvent =
 | `jassie-premiere` | 720p video, 2–30 s with sound (dialogue, effects, music); text, first / last frame, or image / video / audio references |
 | `jassie-cinema` | The same at 1080p |
 
-`jassie-vibe` and `jassie-motion` are retired: the API makes them with `jassie-premiere`. Videos on Jassie plans are up to 5 s.
+`jassie-vibe` and `jassie-motion` are retired: the API makes them with `jassie-premiere`. With an API key, videos are 2–30 s, billed per second of video.
 
 Video generation is **asynchronous** — `generate()` returns a `taskId` immediately.
 
@@ -534,7 +552,7 @@ if (result.status === 'succeeded') console.log(result.videoUrl);
 |---|---|---|---|---|
 | `model` | `'jassie-premiere' \| 'jassie-cinema'` | No | `'jassie-premiere'` | `premiere` = 720p, `cinema` = 1080p |
 | `prompt` | `string` | **Yes** | — | Video description |
-| `duration` | `number` | No | `5` | Whole seconds, 2–30 (up to 5 on Jassie plans) |
+| `duration` | `number` | No | `5` | Whole seconds, 2–30, billed per second |
 | `references` | `Reference[]` | No | — | Images, videos and audio clips to guide the video (up to 10 / 5 / 5). Mutually exclusive with `firstFrame`/`lastFrame`. |
 | `firstFrame` | `string` | No | — | Starting frame image URL |
 | `lastFrame` | `string` | No | — | Ending frame image URL |
