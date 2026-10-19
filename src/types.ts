@@ -128,8 +128,13 @@ export interface CodeStreamParams {
 export interface ImageGenerateParams {
   model: ImageModel;
   prompt: string;
+  /** Up to 3 reference images (URLs or base64 data URIs), in order: "image 1", "image 2", "image 3". */
   image?: string | string[];
-  aspectRatio?: string;
+  /** 'auto' (default): the shape the prompt names, else the first reference's, else square. Or '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9', '9:21'. */
+  aspectRatio?: 'auto' | '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3' | '21:9' | '9:21' | (string & {});
+  /** '1K' or '2K' (default: 1K for jassie-pixel-lite, 2K for jassie-pixel / jassie-pixel-x). Used with aspectRatio. */
+  resolution?: '1K' | '2K';
+  /** Exact size in pixels (multiples of 8); overrides aspectRatio and resolution. */
   width?: number;
   height?: number;
   showcase?: boolean;

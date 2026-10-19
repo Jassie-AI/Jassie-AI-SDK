@@ -455,12 +455,15 @@ console.log(result.status); // 'cancelled'
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `model` | `'jassie-pixel-lite' \| 'jassie-pixel' \| 'jassie-pixel-x'` | **Yes** | — | Model (`pixel-lite` = 2K self-hosted, `pixel` = 2K, `pixel-x` = 4K) |
-| `prompt` | `string` | **Yes** | — | Image description |
-| `image` | `string \| string[]` | No | — | Input image URL(s) for editing or composition (up to 14). Not supported by `pixel-lite`. |
-| `aspectRatio` | `string` | No | `'1:1'` | `'1:1'`, `'4:3'`, `'3:4'`, `'16:9'`, `'9:16'`, `'3:2'`, `'2:3'`, `'21:9'` |
-| `width` | `number` | No | — | Output width in pixels (must be divisible by 8). Requires `height`. Overrides `aspectRatio`. |
-| `height` | `number` | No | — | Output height in pixels (must be divisible by 8). Requires `width`. Overrides `aspectRatio`. |
+| `model` | `'jassie-pixel-lite' \| 'jassie-pixel' \| 'jassie-pixel-x'` | **Yes** | — | Model (`pixel-lite` = fastest, 1K or 2K; `pixel` and `pixel-x` = 2K) |
+| `prompt` | `string` | **Yes** | — | What to draw, or how to use the reference images |
+| `image` | `string \| string[]` | No | — | Up to 3 reference images (URLs or base64 data URIs), in order: "the woman from image 1 in the jacket from image 2". All models. |
+| `aspectRatio` | `string` | No | `'auto'` | `'auto'`: the shape your prompt names ("a phone wallpaper" → 9:16), else the first reference image's, else square. Or `'1:1'`, `'4:3'`, `'3:4'`, `'16:9'`, `'9:16'`, `'3:2'`, `'2:3'`, `'21:9'`, `'9:21'` |
+| `resolution` | `'1K' \| '2K'` | No | `'1K'` for `pixel-lite`, `'2K'` otherwise | Used with `aspectRatio`; ignored when `width` and `height` are set |
+| `width` | `number` | No | — | Exact width in pixels (divisible by 8). Requires `height`. Overrides `aspectRatio` and `resolution`. |
+| `height` | `number` | No | — | Exact height in pixels (divisible by 8). Requires `width`. Overrides `aspectRatio` and `resolution`. |
+
+The response includes the `width`, `height` and `aspectRatio` that were used.
 
 ### Response — `ImageTaskResponse`
 
